@@ -1,0 +1,26 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "test:mvp": "node test_identity_contract.mjs && node test-book.mjs",
+    "test:step2": "node test-hero.mjs && node test-book.mjs",
+    "test:providers": "node test-providers.mjs",
+    "test:stability": "node test-stability.mjs",
+    "test:error-handling": "node test-api-error-handling.mjs",
+    "verify:faceid:e2e": "node scripts/verify-faceid-e2e.mjs"
+  },
+  "dependencies": {
+    "@google/genai": "^1.34.0",
+    "@imgly/background-removal-node": "^1.4.5",
+    "@tensorflow/tfjs-node": "^4.15.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "google-auth-library": "^9.0.0",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.34.5"
+  }
+}

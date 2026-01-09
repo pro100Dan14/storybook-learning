@@ -1,0 +1,42 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bookGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8f9fa;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Book background -->
+  <rect width="800" height="600" fill="url(#bookGradient)" rx="8"/>
+  
+  <!-- Left page -->
+  <rect x="20" y="20" width="360" height="560" fill="#ffffff" rx="4" stroke="#e0e0e0" stroke-width="1"/>
+  
+  <!-- Right page -->
+  <rect x="420" y="20" width="360" height="560" fill="#ffffff" rx="4" stroke="#e0e0e0" stroke-width="1"/>
+  
+  <!-- Left page illustration placeholder -->
+  <circle cx="200" cy="180" r="60" fill="#667eea" opacity="0.3"/>
+  <rect x="140" y="260" width="120" height="80" fill="#764ba2" opacity="0.2" rx="4"/>
+  
+  <!-- Right page illustration placeholder -->
+  <circle cx="600" cy="180" r="60" fill="#f093fb" opacity="0.3"/>
+  <rect x="540" y="260" width="120" height="80" fill="#4facfe" opacity="0.2" rx="4"/>
+  
+  <!-- Text lines (left page) -->
+  <line x1="60" y1="380" x2="340" y2="380" stroke="#333" stroke-width="2" opacity="0.3"/>
+  <line x1="60" y1="410" x2="300" y2="410" stroke="#333" stroke-width="2" opacity="0.3"/>
+  <line x1="60" y1="440" x2="320" y2="440" stroke="#333" stroke-width="2" opacity="0.3"/>
+  
+  <!-- Text lines (right page) -->
+  <line x1="460" y1="380" x2="740" y2="380" stroke="#333" stroke-width="2" opacity="0.3"/>
+  <line x1="460" y1="410" x2="720" y2="410" stroke="#333" stroke-width="2" opacity="0.3"/>
+  <line x1="460" y1="440" x2="700" y2="440" stroke="#333" stroke-width="2" opacity="0.3"/>
+  
+  <!-- Book spine shadow -->
+  <line x1="400" y1="20" x2="400" y2="580" stroke="#ccc" stroke-width="2"/>
+</svg>
+
+
+

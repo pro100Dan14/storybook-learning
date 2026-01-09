@@ -1,0 +1,90 @@
+name: Deploy with Docker (Alternative)
+
+# Альтернативный workflow - только Docker деплой
+# Используйте этот файл если хотите только Docker вариант
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  docker-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Deploy via SSH and Docker
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -e
+            
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/opt/storybook-learning' }}"
+            
+            # Переходим в директорию проекта
+            mkdir -p "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+            
+            # Обновляем код из GitHub
+            if [ -d .git ]; then
+              echo "📥 Обновление кода из GitHub..."
+              git fetch origin
+              git reset --hard origin/${{ github.ref_name }}
+              git clean -fd
+            else
+              echo "📥 Клонирование репозитория..."
+              git clone https://github.com/${{ github.repository }}.git .
+              git checkout ${{ github.ref_name }}
+            fi
+            
+            # Проверяем наличие docker-compose.yml
+            if [ ! -f docker-compose.yml ]; then
+              echo "❌ docker-compose.yml не найден!"
+              exit 1
+            fi
+            
+            # Проверяем наличие .env (не перезаписываем если существует)
+            if [ ! -f .env ]; then
+              echo "⚠️ .env файл не найден. Создайте его вручную на сервере!"
+            fi
+            
+            echo "🐳 Остановка старых контейнеров..."
+            docker-compose down || true
+            
+            echo "🔨 Сборка новых образов..."
+            docker-compose build --no-cache
+            
+            echo "🚀 Запуск контейнеров..."
+            docker-compose up -d
+            
+            echo "⏳ Ожидание запуска сервисов..."
+            sleep 10
+            
+            echo "🏥 Проверка health..."
+            for i in {1..5}; do
+              if curl -f http://localhost:8787/health > /dev/null 2>&1; then
+                echo "✅ Сервис работает!"
+                break
+              fi
+              echo "Попытка $i/5..."
+              sleep 3
+            done
+            
+            # Показываем статус контейнеров
+            echo "📊 Статус контейнеров:"
+            docker-compose ps
+            
+            echo "🎉 Деплой завершен!"
+

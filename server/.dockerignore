@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+gcp-sa.json
+
+# Generated content
+jobs/
+*.log
+out.html
+
+# Test files
+test-*.mjs
+*_test.mjs
+*.test.mjs
+
+# Scripts (optional - remove if you want to keep them)
+scripts/
+
+# Temporary files
+*.tmp
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Documentation (optional - remove if you want to keep them)
+README*.md
+*.md
+
+# IDE
+.vscode/
+.idea/
+

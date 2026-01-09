@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: storybook-backend
+    ports:
+      - "8787:8787"
+    environment:
+      # Node environment
+      - NODE_ENV=production
+      
+      # Gemini API configuration
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_TEXT_MODEL=${GEMINI_TEXT_MODEL:-gemini-2.5-flash}
+      - GEMINI_IMAGE_MODEL=${GEMINI_IMAGE_MODEL:-gemini-2.5-flash-image}
+      
+      # Provider configuration
+      - PROVIDER_TEXT=${PROVIDER_TEXT:-gemini}
+      - PROVIDER_IMAGE=${PROVIDER_IMAGE:-gemini}
+      
+      # Google Cloud credentials (if using ADC instead of API key)
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/app/gcp-sa.json}
+      
+      # FaceID configuration (optional)
+      - FACE_ID_ENABLED=${FACE_ID_ENABLED:-false}
+      - FACE_ID_THRESHOLD=${FACE_ID_THRESHOLD:-0.32}
+      - FACE_ID_MAX_ATTEMPTS=${FACE_ID_MAX_ATTEMPTS:-2}
+      - PYTHON_BIN=${PYTHON_BIN:-python3}
+      
+      # Identity configuration
+      - IDENTITY_SIMILARITY_THRESHOLD=${IDENTITY_SIMILARITY_THRESHOLD:-0.62}
+      
+      # Debug flags
+      - DEBUG_BOOK=${DEBUG_BOOK:-0}
+      - DEBUG_FACE_ID=${DEBUG_FACE_ID:-false}
+    volumes:
+      # Mount jobs directory to persist generated content
+      - ./server/jobs:/app/jobs
+      # Mount gcp-sa.json if using ADC (optional - file may not exist)
+      # Uncomment the line below if you have gcp-sa.json file
+      # - ./server/gcp-sa.json:/app/gcp-sa.json:ro
+    restart: unless-stopped
+    networks:
+      - storybook-network
+
+networks:
+  storybook-network:
+    driver: bridge
+

@@ -1,0 +1,101 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Позволяет запускать вручную из GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/opt/storybook-learning' }}"
+            cd "$DEPLOY_PATH"
+            
+            # Создаем директорию если её нет
+            mkdir -p "$DEPLOY_PATH"
+            
+            # Получаем последние изменения из GitHub
+            if [ -d .git ]; then
+              git fetch origin
+              git reset --hard origin/${{ github.ref_name }}
+              git clean -fd
+            else
+              git clone https://github.com/${{ github.repository }}.git .
+              git checkout ${{ github.ref_name }}
+            fi
+            
+            # Если используется Docker
+            if [ -f docker-compose.yml ]; then
+              echo "🔄 Обновление через Docker..."
+              
+              # Копируем .env если существует на сервере (не перезаписываем)
+              if [ -f .env ]; then
+                echo "✅ .env файл найден, используем существующий"
+              fi
+              
+              # Останавливаем старый контейнер
+              docker-compose down || true
+              
+              # Пересобираем и запускаем
+              docker-compose build --no-cache
+              docker-compose up -d
+              
+              # Ждем запуска
+              sleep 5
+              
+              # Проверяем health
+              curl -f http://localhost:8787/health || echo "⚠️ Health check failed, но контейнер запущен"
+              
+              echo "✅ Деплой через Docker завершен"
+            else
+              # Если не используется Docker - обычный Node.js деплой
+              echo "🔄 Обновление через Node.js..."
+              
+              # Устанавливаем зависимости если нужно
+              if [ -f package.json ]; then
+                npm install --production
+              fi
+              
+              if [ -d server ] && [ -f server/package.json ]; then
+                cd server
+                npm install --production
+                cd ..
+              fi
+              
+              # Перезапускаем через PM2 если установлен
+              if command -v pm2 &> /dev/null; then
+                pm2 restart storybook-backend || pm2 start server/index.js --name storybook-backend
+                pm2 save
+              else
+                echo "⚠️ PM2 не установлен. Нужно настроить систему запуска (systemd, supervisor, etc.)"
+              fi
+              
+              echo "✅ Деплой через Node.js завершен"
+            fi
+            
+            echo "🎉 Деплой успешно завершен!"
+
+      - name: Send notification
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Деплой успешно завершен!"
+          else
+            echo "❌ Деплой завершился с ошибкой!"
+          fi
+

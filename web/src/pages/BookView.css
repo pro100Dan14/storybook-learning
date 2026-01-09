@@ -1,0 +1,389 @@
+.book-view-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+}
+
+.book-view-header {
+  background: white;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.book-view-header h1 {
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.debug-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: #666;
+}
+
+.debug-toggle input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.button-link {
+  padding: 10px 20px;
+  background-color: #4a90e2;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.button-link:hover {
+  background-color: #357abd;
+}
+
+.button-primary {
+  padding: 10px 20px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.button-primary:hover {
+  background-color: #357abd;
+}
+
+.button-secondary {
+  padding: 10px 20px;
+  background-color: #f0f0f0;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.button-secondary:hover {
+  background-color: #e0e0e0;
+}
+
+/* Status badges */
+.status-badges {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.status-badge {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-badge.status-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-badge.status-partial {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-badge.status-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-badge.status-neutral {
+  background-color: #e7f3ff;
+  color: #004085;
+  border: 1px solid #b8daff;
+}
+
+.status-badge.status-passed {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+/* Book Pages Container */
+.book-pages-container {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.book-page-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  page-break-after: always;
+}
+
+.book-page-header {
+  padding: 16px 20px;
+  background: #f8f8f8;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-number {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.book-page-content {
+  padding: 32px;
+  min-height: 400px;
+}
+
+.page-text {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 1.8;
+  color: #333;
+  margin-bottom: 24px;
+  text-align: left;
+  max-width: 100%;
+}
+
+.page-text-empty {
+  font-style: italic;
+  color: #999;
+  margin-bottom: 24px;
+}
+
+.page-image-container {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.page-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.page-image-placeholder {
+  padding: 40px 20px;
+  text-align: center;
+  background: #f8f8f8;
+  border-radius: 4px;
+  border: 2px dashed #ddd;
+  margin-top: 24px;
+}
+
+.page-image-placeholder p {
+  margin: 8px 0;
+  font-size: 48px;
+}
+
+.placeholder-text {
+  font-size: 14px !important;
+  color: #666;
+  font-style: italic;
+}
+
+.no-pages {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+/* Loading */
+.loading-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4a90e2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Debug View */
+.debug-container {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.debug-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+}
+
+.debug-section h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #333;
+  font-size: 20px;
+}
+
+.similarity-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.similarity-table th,
+.similarity-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.similarity-table th {
+  background: #f8f8f8;
+  font-weight: 600;
+  color: #333;
+}
+
+.similarity-table .status-pass {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.similarity-table .status-fail {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.iframe-container {
+  flex: 1;
+  overflow: hidden;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-height: 600px;
+}
+
+.report-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  min-height: 600px;
+}
+
+.error-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.error-message {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  text-align: center;
+}
+
+.error-message h2 {
+  color: #c33;
+  margin-bottom: 16px;
+  font-size: 24px;
+}
+
+.error-message p {
+  color: #666;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .book-view-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .button-link,
+  .button-secondary {
+    width: 100%;
+    text-align: center;
+  }
+
+  .book-pages-container {
+    padding: 16px;
+  }
+
+  .book-page-content {
+    padding: 20px;
+  }
+
+  .page-text {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+}

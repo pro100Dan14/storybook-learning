@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:web": "cd web && npm run dev"
+  },
+  "dependencies": {
+    "@google/genai": "^1.34.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
