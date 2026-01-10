@@ -27,8 +27,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install Node.js dependencies
-# Use npm ci for faster, reliable, reproducible builds
-RUN npm ci --only=production && npm cache clean --force
+# Using npm install with --legacy-peer-deps to handle TensorFlow version conflicts
+# Note: Installing @tensorflow/tfjs-node for identity guard (optional feature)
+RUN npm install --only=production --legacy-peer-deps && npm cache clean --force
 
 # Copy application code
 COPY . .
