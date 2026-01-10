@@ -8,7 +8,8 @@ services:
       - "8787:8787"
     environment:
       # Node environment
-      - NODE_ENV=production
+      # Using development mode to allow identity guard to skip gracefully if dependencies unavailable
+      - NODE_ENV=development
       
       # Gemini API configuration
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}

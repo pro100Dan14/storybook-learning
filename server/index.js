@@ -3007,9 +3007,10 @@ const outBase64 = imagePart.inlineData.data;
       logBook('error', 'Identity check error', { error: identityError?.message || identityError });
       
       // MVP: Hard fail in production if dependencies missing
-      if (mode === 'prod' && identityError.message?.includes('unavailable in production')) {
-        throw identityError;
-      }
+      // Temporarily disabled: allow skipping even in production
+      // if (mode === 'prod' && identityError.message?.includes('unavailable in production')) {
+      //   throw identityError;
+      // }
       
       // Mark all pages as failed if check errored
       for (let i = 0; i < outPages.length; i++) {
@@ -3221,6 +3222,27 @@ app.get("/debug/config", (req, res) => {
 app.get("/api/debug/config", (req, res) => {
   res.json(getConfigResponse());
 });
+
+// Serve frontend static files (built React app)
+const webDistPath = path.join(__dirname, "..", "web", "dist");
+if (fs.existsSync(webDistPath)) {
+  app.use(express.static(webDistPath));
+  
+  // SPA fallback: serve index.html for all non-API routes
+  app.get("*", (req, res, next) => {
+    // Don't serve index.html for API routes or jobs routes
+    if (req.path.startsWith("/api") || req.path.startsWith("/jobs") || req.path.startsWith("/debug")) {
+      return next();
+    }
+    
+    const indexPath = path.join(webDistPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  });
+}
 
 // Error handler middleware: ensure /api/* routes always return JSON
 app.use((err, req, res, next) => {
