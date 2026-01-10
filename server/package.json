@@ -16,7 +16,6 @@
     "@google/genai": "^1.34.0",
     "@imgly/background-removal-node": "^1.4.5",
     "@tensorflow/tfjs-node": "^4.15.0",
-    "@tensorflow-models/face-landmarks-detection": "^2.1.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
