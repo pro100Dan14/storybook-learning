@@ -78,34 +78,28 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // CORS configuration for Lovable and mobile apps
+// Allow all origins for now (can be restricted later)
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or Postman)
-    if (!origin) return callback(null, true);
-    
-    // Allow Lovable domains
-    if (
-      origin.match(/^https?:\/\/.*\.lovable\.app$/) ||
-      origin.match(/^https?:\/\/.*\.lovableproject\.com$/) ||
-      origin.match(/^https?:\/\/localhost(:\d+)?$/) ||
-      origin.match(/^https?:\/\/127\.0\.0\.1(:\d+)?$/)
-    ) {
-      return callback(null, true);
-    }
-    
-    // Allow all origins for development (can be restricted in production)
-    callback(null, true);
-  },
+  origin: true, // Allow all origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
-  optionsSuccessStatus: 200 // For legacy browser support
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 };
 
+// Apply CORS middleware
 app.use(cors(corsOptions));
 
-// Explicitly handle OPTIONS requests for preflight
-app.options('*', cors(corsOptions));
+// Handle OPTIONS preflight requests explicitly
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  res.sendStatus(200);
+});
 
 app.get("/debug/adc", async (req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
