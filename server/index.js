@@ -76,7 +76,36 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+
+// CORS configuration for Lovable and mobile apps
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    // Allow Lovable domains
+    if (
+      origin.match(/^https?:\/\/.*\.lovable\.app$/) ||
+      origin.match(/^https?:\/\/.*\.lovableproject\.com$/) ||
+      origin.match(/^https?:\/\/localhost(:\d+)?$/) ||
+      origin.match(/^https?:\/\/127\.0\.0\.1(:\d+)?$/)
+    ) {
+      return callback(null, true);
+    }
+    
+    // Allow all origins for development (can be restricted in production)
+    callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200 // For legacy browser support
+};
+
+app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS requests for preflight
+app.options('*', cors(corsOptions));
 
 app.get("/debug/adc", async (req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
