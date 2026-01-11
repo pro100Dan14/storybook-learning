@@ -78,9 +78,25 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // CORS configuration for Lovable and mobile apps
-// Allow all origins for now (can be restricted later)
 const corsOptions = {
-  origin: true, // Allow all origins
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    // Allow all Lovable domains
+    if (
+      origin.match(/^https?:\/\/.*\.lovable\.app$/) ||
+      origin.match(/^https?:\/\/.*\.lovableproject\.com$/) ||
+      origin.match(/^https?:\/\/localhost(:\d+)?$/) ||
+      origin.match(/^https?:\/\/127\.0\.0\.1(:\d+)?$/) ||
+      origin.match(/^https?:\/\/.*\.lovable\.dev$/)
+    ) {
+      return callback(null, true);
+    }
+    
+    // Allow all origins for development
+    callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
