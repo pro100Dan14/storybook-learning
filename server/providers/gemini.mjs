@@ -109,10 +109,19 @@ export class GeminiTextProvider {
       result = await ai.models.generateContent({
         model: GEMINI_TEXT_MODEL,
         contents,
+        config: {
+          generationConfig: {
+            maxOutputTokens: 8192, // Maximum tokens for gemini-2.5-flash to prevent text truncation
+          },
+        },
       });
     } else {
       // Use raw HTTP request with scoped access token
-      result = await makeGeminiRequest(GEMINI_TEXT_MODEL, contents);
+      result = await makeGeminiRequest(GEMINI_TEXT_MODEL, contents, {
+        generationConfig: {
+          maxOutputTokens: 8192, // Maximum tokens for gemini-2.5-flash to prevent text truncation
+        },
+      });
     }
 
     const text = extractText(result);
