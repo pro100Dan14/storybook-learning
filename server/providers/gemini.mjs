@@ -106,14 +106,11 @@ export class GeminiTextProvider {
     let result;
     if (ai) {
       // Use SDK with API key
+      // Note: SDK may not support generationConfig directly, using default for now
+      // For HTTP requests, generationConfig is set below
       result = await ai.models.generateContent({
         model: GEMINI_TEXT_MODEL,
         contents,
-        config: {
-          generationConfig: {
-            maxOutputTokens: 8192, // Maximum tokens for gemini-2.5-flash to prevent text truncation
-          },
-        },
       });
     } else {
       // Use raw HTTP request with scoped access token
