@@ -2475,6 +2475,8 @@ CRITICAL REQUIREMENTS:
 - Style must clearly match age group ${finalAgeGroup}.
 - Output ONLY valid JSON. No markdown, no explanations, no code blocks.
 - Each page text should be a single string with natural line breaks.
+- IMPORTANT: Generate COMPLETE text for each page. Do NOT truncate or cut text mid-word. Each page text must be a full, complete paragraph that ends with proper punctuation.
+- Do NOT add ellipsis "..." or cut text. Write the complete text for each page from start to finish.
 `.trim();
 
     let pagesJSON = null;
@@ -2515,6 +2517,14 @@ CRITICAL REQUIREMENTS:
           });
         }
         
+        // Log end of text to see how it ends
+        const textEnd = pagesTextRaw ? pagesTextRaw.substring(Math.max(0, pagesTextRaw.length - 200)) : '';
+        logBook('debug', 'Raw text end (last 200 chars)', {
+          attempt,
+          textEnd: textEnd,
+          textEndLength: textEnd.length
+        });
+        
         // Check for truncation in raw response
         const truncationCheck = detectTextTruncation(pagesTextRaw);
         if (truncationCheck.suspicious) {
@@ -2522,7 +2532,8 @@ CRITICAL REQUIREMENTS:
             attempt,
             reason: truncationCheck.reason,
             pattern: truncationCheck.pattern,
-            rawTextLength
+            rawTextLength,
+            textEnd: textEnd
           });
         }
         
