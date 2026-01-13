@@ -10,19 +10,30 @@ const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 const GEMINI_TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-2.5-flash";
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
 
-// Helper: Make authenticated request to Gemini API
-async function makeGeminiRequest(model, contents, config = {}) {
+// Helper: Make authenticated request to Gemini API (supports both API key and access token)
+async function makeGeminiRequest(model, contents, config = {}, useApiKey = false) {
   const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   
   try {
-    const accessToken = await getGeminiAccessToken();
+    const headers = {
+      "Content-Type": "application/json",
+    };
     
-    const response = await fetch(apiEndpoint, {
+    let endpoint = apiEndpoint;
+    if (useApiKey && geminiApiKey) {
+      // For API key, add it as query parameter
+      const url = new URL(apiEndpoint);
+      url.searchParams.set('key', geminiApiKey);
+      endpoint = url.toString();
+    } else {
+      // For access token, use Authorization header
+      const accessToken = await getGeminiAccessToken();
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+    
+    const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         contents,
         ...config,
@@ -103,23 +114,13 @@ export class GeminiTextProvider {
       },
     ];
 
-    let result;
-    if (ai) {
-      // Use SDK with API key
-      // Note: SDK may not support generationConfig directly, using default for now
-      // For HTTP requests, generationConfig is set below
-      result = await ai.models.generateContent({
-        model: GEMINI_TEXT_MODEL,
-        contents,
-      });
-    } else {
-      // Use raw HTTP request with scoped access token
-      result = await makeGeminiRequest(GEMINI_TEXT_MODEL, contents, {
-        generationConfig: {
-          maxOutputTokens: 8192, // Maximum tokens for gemini-2.5-flash to prevent text truncation
-        },
-      });
-    }
+    // Use HTTP API for both API key and ADC token to ensure generationConfig works correctly
+    // This ensures maxOutputTokens is properly set to prevent text truncation
+    const result = await makeGeminiRequest(GEMINI_TEXT_MODEL, contents, {
+      generationConfig: {
+        maxOutputTokens: 8192, // Maximum tokens for gemini-2.5-flash to prevent text truncation
+      },
+    }, !!ai); // Pass true if using API key (ai is defined)
 
     const text = extractText(result);
     const raw = result;
