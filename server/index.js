@@ -2633,6 +2633,8 @@ CRITICAL:
 - Keep same paragraph structure, only improve quality.
 - Preserve the same plot.
 - The child should want to hear it again tomorrow.
+- IMPORTANT: Generate COMPLETE text for each page. Do NOT truncate or cut text mid-word. Each page text must be a full, complete text that ends with proper punctuation.
+- Do NOT add ellipsis "..." or cut text. Write the complete text for each page from start to finish.
 `.trim();
         
         const editorResult = await generateTextUnified({
