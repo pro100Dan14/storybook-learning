@@ -2491,13 +2491,29 @@ CRITICAL REQUIREMENTS:
         
         const pagesTextRaw = pagesTextResult.text;
         
+        // Diagnostic: Check finishReason from Gemini API response
+        const rawCandidate = pagesTextResult.raw?.candidates?.[0] || pagesTextResult.raw?.response?.candidates?.[0];
+        const rawFinishReason = rawCandidate?.finishReason;
+        const rawTokenCount = rawCandidate?.tokenCount;
+        
         // Log text length for monitoring (non-PII metrics only)
         const rawTextLength = pagesTextRaw ? pagesTextRaw.length : 0;
         logBook('debug', 'Page text generation raw response', {
           attempt,
           rawTextLength,
+          finishReason: rawFinishReason || 'unknown',
+          tokenCount: rawTokenCount ? JSON.stringify(rawTokenCount) : 'unknown',
           rawTextPreview: rawTextLength > 0 ? pagesTextRaw.substring(0, 100) : ''
         });
+        
+        if (rawFinishReason === 'MAX_TOKENS') {
+          logBook('error', 'Text generation truncated by MAX_TOKENS', {
+            attempt,
+            requestedMaxOutputTokens: 8192,
+            actualTokenCount: rawTokenCount ? JSON.stringify(rawTokenCount) : 'unknown',
+            rawTextLength
+          });
+        }
         
         // Check for truncation in raw response
         const truncationCheck = detectTextTruncation(pagesTextRaw);

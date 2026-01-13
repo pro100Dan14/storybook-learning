@@ -122,6 +122,17 @@ export class GeminiTextProvider {
       },
     }, !!ai); // Pass true if using API key (ai is defined)
 
+    // Diagnostic logging: Check finishReason to detect token limit issues
+    const candidate = result?.candidates?.[0] || result?.response?.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const tokenCount = candidate?.tokenCount;
+    if (requestId && finishReason) {
+      console.log(`[${requestId}] [Gemini API] finishReason=${finishReason}, tokenCount=${JSON.stringify(tokenCount)}`);
+      if (finishReason === 'MAX_TOKENS') {
+        console.error(`[${requestId}] [Gemini API ERROR] Text truncated: MAX_TOKENS reached! Requested maxOutputTokens=8192, actual tokens=${tokenCount?.totalTokens || 'unknown'}`);
+      }
+    }
+
     const text = extractText(result);
     const raw = result;
 
