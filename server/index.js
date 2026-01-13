@@ -44,9 +44,6 @@ function ensureLocalAdc() {
 ensureLocalAdc();
 // ---- end ADC bootstrap ----
 
-// Call again after dotenv in case it overwrote env vars
-ensureLocalAdc();
-
 // Hard startup check: GEMINI_API_KEY required when using Gemini providers
 const providerText = (process.env.PROVIDER_TEXT || "gemini").toLowerCase();
 const providerImage = (process.env.PROVIDER_IMAGE || "gemini").toLowerCase();
@@ -61,14 +58,13 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import { GoogleAuth } from "google-auth-library";
-import { GoogleGenAI } from "@google/genai";
 import { FACE_IDENTITY_BLOCK, FACE_IDENTITY_PROHIBITIONS } from "./prompts/face_identity.mjs";
 import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import { generateTextUnified } from "./services/gen-text.mjs";
 import { generateImageUnified } from "./services/gen-image.mjs";
 import { decodeBase64ToBuffer } from "./utils/base64-decode.mjs";
-import { getGeminiAuthClient, getGeminiAccessToken } from "./utils/gemini-auth.mjs";
+import { getGeminiAccessToken } from "./utils/gemini-auth.mjs";
 
 const ALLOWED_PHOTO_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -191,11 +187,6 @@ const upload = multer({
 // express.json only parses application/json content-type, so it won't interfere with multipart
 app.use(express.json({ limit: "35mb" }));
 
-// Keep ai for backward compatibility (used in extractText/extractFirstInlineImagePart helpers)
-// When apiKey is provided, use it; otherwise SDK will use ADC with scopes configured above
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
 
 function stripDataUrlPrefix(maybeBase64) {
   if (!maybeBase64) return "";
@@ -241,31 +232,6 @@ function isValidImageBufferForMime(buf, mimeType) {
   return false;
 }
 
-function extractText(result) {
-  // SDK иногда даёт helper text(), иногда только parts.
-  try {
-    if (result?.response?.text) return String(result.response.text()).trim();
-  } catch {}
-
-  const parts =
-    result?.response?.candidates?.[0]?.content?.parts ||
-    result?.candidates?.[0]?.content?.parts ||
-    [];
-
-  return parts
-    .map((p) => (typeof p?.text === "string" ? p.text : ""))
-    .join("")
-    .trim();
-}
-
-function extractFirstInlineImagePart(result) {
-  const parts =
-    result?.response?.candidates?.[0]?.content?.parts ||
-    result?.candidates?.[0]?.content?.parts ||
-    [];
-
-  return parts.find((p) => p?.inlineData?.data);
-}
 
 // Helper: Validate identity JSON structure and content quality
 // Returns {valid: boolean, reason: string} for detailed error reporting
@@ -688,19 +654,6 @@ function getAgeRubric(ageGroup) {
   }
 }
 
-// Helper: Get story bible (canon children's fairy tale rules)
-function getStoryBible() {
-  return {
-    tone: "Warm, kind, magical, never sarcastic or fearful",
-    style: "Clear cause-effect, show-don't-tell, concrete sensory details",
-    hero: "Consistent identity, always kind and curious, emotionally consistent",
-    structure: "One main event per page, clear narrative progression",
-    language: "No moralizing lectures, no abstract philosophy, no modern slang",
-    emotion: "Positive emotions: wonder, joy, curiosity, calm resolution",
-    pacing: "Natural flow, each page is a complete narrative fragment",
-    imagery: "Concrete, sensory, age-appropriate visual descriptions"
-  };
-}
 
 // QUALITY CHECKLIST SYSTEM - Deterministic validation and enforcement
 // Severity levels: ERROR (must remediate) vs WARNING (log only)
