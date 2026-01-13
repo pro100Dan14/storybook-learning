@@ -2448,37 +2448,29 @@ CRITICAL:
     };
     
     const ageRubricForPrompt = getAgeRubric(finalAgeGroup);
+    // Simplified prompt to reduce input tokens and leave more room for output
     const pagesPrompt = `
-${masterPrompt}
+Write 4 complete page texts for a Russian children's picture book (ages ${finalAgeGroup}).
 
-========================
-PAGE TEXT GENERATION TASK
-========================
-Write the actual page texts for a 4-page picture book in Russian.
-
-OUTLINE TO FOLLOW (strictly):
+OUTLINE:
 ${JSON.stringify(outlineJSONForPages.beats, null, 2)}
 
-OUTPUT FORMAT (JSON only, no markdown, no extra text):
+OUTPUT FORMAT (JSON only):
 {
   "pages": [
-    {"page": 1, "text": "Full complete page text ending with proper punctuation..."},
-    {"page": 2, "text": "Full complete page text ending with proper punctuation..."},
-    {"page": 3, "text": "Full complete page text ending with proper punctuation..."},
-    {"page": 4, "text": "Full complete page text ending with proper punctuation..."}
+    {"page": 1, "text": "Complete page 1 text ending with punctuation."},
+    {"page": 2, "text": "Complete page 2 text ending with punctuation."},
+    {"page": 3, "text": "Complete page 3 text ending with punctuation."},
+    {"page": 4, "text": "Complete page 4 text ending with punctuation."}
   ]
 }
 
-CRITICAL REQUIREMENTS:
-- Text must be pleasant to read aloud slowly.
-- Each page must match its emotional purpose exactly.
-- No fear, danger, urgency, or conflict.
-- Style must clearly match age group ${finalAgeGroup}.
-- Output ONLY valid JSON. No markdown, no explanations, no code blocks.
-- Each page text should be a single string with natural line breaks.
-- TEXT LENGTH REQUIREMENT: Each page text must contain at least ${ageRubricForPrompt.wordCount.split('-')[0]} words (${ageRubricForPrompt.wordCount} per page is expected). Write FULL, COMPLETE text for each page.
-- COMPLETENESS: Each page text MUST end with proper sentence-ending punctuation (. ! ?). NEVER cut text mid-word. NEVER add ellipsis "..." unless it's part of the story.
-- Write the COMPLETE text for all 4 pages from start to finish. Do not stop early.
+REQUIREMENTS:
+- Age ${finalAgeGroup}: ${ageRubricForPrompt.wordCount} words per page
+- Calm, warm, safe tone. No fear or danger.
+- Each page text MUST be COMPLETE - ${ageRubricForPrompt.wordCount.split('-')[0]}+ words, ends with punctuation.
+- NEVER cut text mid-word. NEVER use "..." ellipsis.
+- Output ONLY valid JSON. No markdown.
 `.trim();
 
     let pagesJSON = null;
@@ -2622,23 +2614,9 @@ CRITICAL REQUIREMENTS:
     if (pagesJSON && pageTexts.length === pageCount) {
       try {
         const ageRubricForEditor = getAgeRubric(finalAgeGroup);
+        // Simplified editor prompt to reduce input tokens
         const editorPrompt = `
-${masterPrompt}
-
-========================
-EDITOR PASS (MANDATORY)
-========================
-You are a senior children's book editor. Improve the rhythm, clarity, warmth, and age-appropriateness of these page texts.
-
-IMPORTANT: Do NOT change the plot or story structure. Keep the same number of paragraphs per page. Only improve:
-- Sentence rhythm and flow (make it more musical)
-- Word choice and clarity (softer, warmer)
-- Warmth and emotional tone (more soothing)
-- Age-appropriate language (must match ${finalAgeGroup})
-- Reading-aloud quality (must sound natural when read slowly)
-- Remove harsh transitions
-- Soften language
-- Make text calmer and more musical
+Improve these ${finalAgeGroup} children's book page texts. Keep plot/structure, improve rhythm and warmth.
 
 CURRENT PAGES:
 ${JSON.stringify(pagesJSON.pages, null, 2)}
@@ -2646,21 +2624,18 @@ ${JSON.stringify(pagesJSON.pages, null, 2)}
 OUTPUT FORMAT (JSON only):
 {
   "pages": [
-    {"page": 1, "text": "Improved complete page text ending with proper punctuation..."},
-    {"page": 2, "text": "Improved complete page text ending with proper punctuation..."},
-    {"page": 3, "text": "Improved complete page text ending with proper punctuation..."},
-    {"page": 4, "text": "Improved complete page text ending with proper punctuation..."}
+    {"page": 1, "text": "Improved complete text ending with punctuation."},
+    {"page": 2, "text": "Improved complete text ending with punctuation."},
+    {"page": 3, "text": "Improved complete text ending with punctuation."},
+    {"page": 4, "text": "Improved complete text ending with punctuation."}
   ]
 }
 
-CRITICAL: 
-- Output ONLY valid JSON. 
-- Keep same paragraph structure, only improve quality.
-- Preserve the same plot.
-- The child should want to hear it again tomorrow.
-- TEXT LENGTH: Each page text must maintain or exceed the original length (target: ${ageRubricForEditor.wordCount} words per page).
-- COMPLETENESS: Each page text MUST be COMPLETE. Each page text MUST end with proper sentence-ending punctuation (. ! ?). NEVER cut text mid-word. NEVER add ellipsis "..." unless it's part of the story.
-- Write the COMPLETE improved text for all 4 pages from start to finish. Do not stop early.
+REQUIREMENTS:
+- Maintain or exceed original length (${ageRubricForEditor.wordCount} words per page)
+- Each text MUST be COMPLETE - ends with punctuation, no mid-word cuts, no "..."
+- Improve rhythm, warmth, clarity. Keep plot unchanged.
+- Output ONLY valid JSON.
 `.trim();
         
         const editorResult = await generateTextUnified({
