@@ -1,8 +1,8 @@
 services:
   backend:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     container_name: storybook-backend
     ports:
       - "8787:8787"
@@ -23,10 +23,10 @@ services:
       # Google Cloud credentials (if using ADC instead of API key)
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/app/gcp-sa.json}
       
-      # FaceID configuration (optional)
-      - FACE_ID_ENABLED=${FACE_ID_ENABLED:-false}
+      # FaceID configuration
+      - FACE_ID_ENABLED=${FACE_ID_ENABLED:-true}
       - FACE_ID_THRESHOLD=${FACE_ID_THRESHOLD:-0.32}
-      - FACE_ID_MAX_ATTEMPTS=${FACE_ID_MAX_ATTEMPTS:-2}
+      - FACE_ID_MAX_ATTEMPTS=${FACE_ID_MAX_ATTEMPTS:-3}
       - PYTHON_BIN=${PYTHON_BIN:-python3}
       
       # Identity configuration

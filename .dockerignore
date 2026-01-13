@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+**/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+server/gcp-sa.json
+
+# Generated content
+server/jobs/
+*.log
+out.html
+
+# Test files
+**/test-*.mjs
+**/*_test.mjs
+**/*.test.mjs
+
+# Temporary files
+*.tmp
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README*.md
+*.md
+
+# IDE
+.vscode/
+.idea/
+
+# Web directory (not needed for backend)
+web/
+
