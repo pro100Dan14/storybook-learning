@@ -384,6 +384,60 @@ function normalizeIdentity(jsonObj) {
   };
 }
 
+/**
+ * Detect suspicious text truncation patterns
+ * @param {string} text - Text to check
+ * @returns {Object} Detection result with { suspicious: boolean, reason?: string, pattern?: string }
+ */
+function detectTextTruncation(text) {
+  if (!text || typeof text !== 'string') {
+    return { suspicious: false };
+  }
+  
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return { suspicious: false };
+  }
+  
+  // Pattern 1: Ends with "..." or ".." or "..."
+  if (trimmed.endsWith('...') || trimmed.endsWith('..')) {
+    return { suspicious: true, reason: 'trailing_ellipsis', pattern: 'ends_with_ellipsis' };
+  }
+  
+  // Pattern 2: Ends mid-word (last word doesn't end with punctuation or space)
+  // Check if last character is not punctuation and next-to-last is not a space
+  const lastChar = trimmed[trimmed.length - 1];
+  const punctuation = /[.!?;:,\s\u2026\u2014\u2013]/; // Includes ellipsis, em-dash, en-dash
+  if (!punctuation.test(lastChar) && trimmed.length > 1) {
+    const secondLastChar = trimmed[trimmed.length - 2];
+    // If second-to-last is also not punctuation/space, likely mid-word
+    if (!punctuation.test(secondLastChar)) {
+      // Check if it looks like an incomplete word (ends with lowercase letter, no sentence-ending punctuation before)
+      const lastWordMatch = trimmed.match(/\s+([^\s.!?;:\u2026]+)$/);
+      if (lastWordMatch && lastWordMatch[1].length > 0) {
+        const lastWord = lastWordMatch[1];
+        // If last word is longer than 3 chars and doesn't end with punctuation, suspect truncation
+        if (lastWord.length > 3 && !/[.!?;:]/.test(lastWord)) {
+          return { suspicious: true, reason: 'mid_word_cut', pattern: 'ends_mid_word' };
+        }
+      }
+    }
+  }
+  
+  // Pattern 3: Ends with incomplete sentence (no terminal punctuation in last 50 chars)
+  const last50Chars = trimmed.slice(-50);
+  const hasTerminalPunct = /[.!?]\s*$/.test(last50Chars);
+  if (!hasTerminalPunct && trimmed.length > 50) {
+    // But allow if it ends with comma, semicolon, or ellipsis (which are valid sentence continuations)
+    const lastCharValid = /[,;:\u2026]/.test(lastChar);
+    if (!lastCharValid) {
+      return { suspicious: true, reason: 'incomplete_sentence', pattern: 'no_terminal_punctuation' };
+    }
+  }
+  
+  return { suspicious: false };
+}
+
 // Helper: Extract JSON from text (handle markdown, leading/trailing text)
 function extractJSONFromText(text) {
   if (!text) return null;
@@ -2436,10 +2490,59 @@ CRITICAL REQUIREMENTS:
         });
         
         const pagesTextRaw = pagesTextResult.text;
+        
+        // Log text length for monitoring (non-PII metrics only)
+        const rawTextLength = pagesTextRaw ? pagesTextRaw.length : 0;
+        logBook('debug', 'Page text generation raw response', {
+          attempt,
+          rawTextLength,
+          rawTextPreview: rawTextLength > 0 ? pagesTextRaw.substring(0, 100) : ''
+        });
+        
+        // Check for truncation in raw response
+        const truncationCheck = detectTextTruncation(pagesTextRaw);
+        if (truncationCheck.suspicious) {
+          logBook('warn', 'Suspicious truncation detected in raw text', {
+            attempt,
+            reason: truncationCheck.reason,
+            pattern: truncationCheck.pattern,
+            rawTextLength
+          });
+        }
+        
         pagesJSON = extractJSONFromText(pagesTextRaw);
         
         if (pagesJSON && pagesJSON.pages && Array.isArray(pagesJSON.pages) && pagesJSON.pages.length >= pageCount) {
           pageTexts = pagesJSON.pages.slice(0, pageCount).map(p => p.text || "");
+          
+          // Log and check truncation for each page text
+          for (let i = 0; i < pageTexts.length; i++) {
+            const pageText = pageTexts[i];
+            const pageTextLength = pageText ? pageText.length : 0;
+            const pageTruncationCheck = detectTextTruncation(pageText);
+            
+            logBook('debug', 'Page text extracted', {
+              pageNumber: i + 1,
+              textLength: pageTextLength,
+              suspiciousTruncation: pageTruncationCheck.suspicious,
+              truncationReason: pageTruncationCheck.reason
+            });
+            
+            if (pageTruncationCheck.suspicious) {
+              logBook('warn', 'Suspicious truncation detected in page text', {
+                pageNumber: i + 1,
+                reason: pageTruncationCheck.reason,
+                pattern: pageTruncationCheck.pattern,
+                textLength: pageTextLength,
+                textPreview: pageTextLength > 0 ? pageText.substring(Math.max(0, pageTextLength - 50)) : ''
+              });
+              warnings.push({
+                code: 'TEXT_TRUNCATION_SUSPECTED',
+                message: `Page ${i + 1} text may be truncated (${pageTruncationCheck.reason})`
+              });
+            }
+          }
+          
           break;
         }
       } catch (err) {
@@ -2511,9 +2614,29 @@ CRITICAL:
           requestId
         });
         
+        // Log editor pass text length
+        const editorTextLength = editorResult.text ? editorResult.text.length : 0;
+        logBook('debug', 'Editor pass raw response', {
+          rawTextLength: editorTextLength
+        });
+        
         const editorJSON = extractJSONFromText(editorResult.text);
         if (editorJSON && editorJSON.pages && Array.isArray(editorJSON.pages) && editorJSON.pages.length === pageCount) {
-          pageTexts = editorJSON.pages.map(p => p.text || "");
+          const newPageTexts = editorJSON.pages.map(p => p.text || "");
+          
+          // Check truncation in editor pass results
+          for (let i = 0; i < newPageTexts.length; i++) {
+            const pageText = newPageTexts[i];
+            const pageTruncationCheck = detectTextTruncation(pageText);
+            if (pageTruncationCheck.suspicious) {
+              logBook('warn', 'Suspicious truncation in editor pass page text', {
+                pageNumber: i + 1,
+                reason: pageTruncationCheck.reason
+              });
+            }
+          }
+          
+          pageTexts = newPageTexts;
           console.log(`[${requestId}] Editor pass applied successfully`);
         } else {
           console.log(`[${requestId}] Editor pass failed, using original text`);
