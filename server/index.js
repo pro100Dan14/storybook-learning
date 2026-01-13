@@ -2544,9 +2544,9 @@ CRITICAL REQUIREMENTS:
         if (pagesJSON && pagesJSON.pages && Array.isArray(pagesJSON.pages) && pagesJSON.pages.length >= pageCount) {
           pageTexts = pagesJSON.pages.slice(0, pageCount).map(p => p.text || "");
           
-          // Check for truncation - if found, retry instead of accepting the result
-          let hasTruncation = false;
-          const minWordsPerPage = parseInt(ageRubricForPrompt.wordCount.split('-')[0]);
+          // Check for truncation - only reject if text is clearly truncated (mid-word cut, ellipsis)
+          // Don't reject based on word count alone - that's checked later in quality validation
+          let hasCriticalTruncation = false;
           
           // Log and check truncation for each page text
           for (let i = 0; i < pageTexts.length; i++) {
@@ -2559,31 +2559,37 @@ CRITICAL REQUIREMENTS:
               pageNumber: i + 1,
               textLength: pageTextLength,
               wordCount: pageWordCount,
-              minWordsExpected: minWordsPerPage,
               suspiciousTruncation: pageTruncationCheck.suspicious,
               truncationReason: pageTruncationCheck.reason
             });
             
-            // Check if text is suspiciously truncated or too short
-            if (pageTruncationCheck.suspicious || pageWordCount < minWordsPerPage) {
-              hasTruncation = true;
-              logBook('warn', 'Suspicious truncation or short text detected in page text - will retry', {
+            // Only reject if text is clearly truncated (mid-word cut or ellipsis), not just short
+            if (pageTruncationCheck.suspicious && (pageTruncationCheck.reason === 'mid_word_cut' || pageTruncationCheck.reason === 'trailing_ellipsis')) {
+              hasCriticalTruncation = true;
+              logBook('warn', 'Critical truncation detected in page text - will retry', {
                 pageNumber: i + 1,
-                reason: pageTruncationCheck.suspicious ? pageTruncationCheck.reason : 'word_count_too_low',
+                reason: pageTruncationCheck.reason,
                 pattern: pageTruncationCheck.pattern,
                 textLength: pageTextLength,
                 wordCount: pageWordCount,
-                minWordsExpected: minWordsPerPage,
                 textPreview: pageTextLength > 0 ? pageText.substring(Math.max(0, pageTextLength - 50)) : ''
+              });
+            } else if (pageTruncationCheck.suspicious) {
+              // Other truncation patterns (like incomplete sentence) - log but don't reject
+              logBook('info', 'Minor truncation pattern detected, accepting text', {
+                pageNumber: i + 1,
+                reason: pageTruncationCheck.reason,
+                textLength: pageTextLength,
+                wordCount: pageWordCount
               });
             }
           }
           
-          // Only accept the result if no truncation was detected
-          if (!hasTruncation) {
+          // Only reject if critical truncation detected (mid-word cut or ellipsis)
+          if (!hasCriticalTruncation) {
             break;
           } else {
-            logBook('warn', 'Text generation result rejected due to truncation, retrying', {
+            logBook('warn', 'Text generation result rejected due to critical truncation, retrying', {
               attempt,
               maxAttempts: maxPageRetries
             });
