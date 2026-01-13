@@ -348,8 +348,7 @@ export function generateHTMLReport({ bookId, heroReference, pages, identityResul
     }
 
     if (page.pageText) {
-      const textPreview = page.pageText.substring(0, 200);
-      html += `      <div class="page-text">${textPreview}${page.pageText.length > 200 ? '...' : ''}</div>
+      html += `      <div class="page-text">${page.pageText}</div>
 `;
     }
 

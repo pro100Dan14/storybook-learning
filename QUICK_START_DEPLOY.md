@@ -71,3 +71,4 @@ curl http://localhost:8787/health
 
 **Полная документация:** [GITHUB_DEPLOY.md](./GITHUB_DEPLOY.md)
 
+
