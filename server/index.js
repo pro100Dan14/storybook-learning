@@ -2447,6 +2447,7 @@ CRITICAL:
       }))
     };
     
+    const ageRubricForPrompt = getAgeRubric(finalAgeGroup);
     const pagesPrompt = `
 ${masterPrompt}
 
@@ -2461,10 +2462,10 @@ ${JSON.stringify(outlineJSONForPages.beats, null, 2)}
 OUTPUT FORMAT (JSON only, no markdown, no extra text):
 {
   "pages": [
-    {"page": 1, "text": "Full page text. Page 1 must establish safe world - calm, familiar environment. Focus on light, warmth, sounds, smells, stillness. No action yet."},
-    {"page": 2, "text": "Full page text. Page 2 must show quiet wonder - small magical element appears. Child notices, wonders, observes. No conflict, no action demanded."},
-    {"page": 3, "text": "Full page text. Page 3 must show small journey - tiny challenge or decision. Child moves, asks, or tries. Help is allowed. Child succeeds gently. No danger."},
-    {"page": 4, "text": "Full page text. Page 4 must show return and warmth - calm returns, magic becomes part of life. Feeling of home, evening, warm light. No explanations or morals."}
+    {"page": 1, "text": "Full complete page text ending with proper punctuation..."},
+    {"page": 2, "text": "Full complete page text ending with proper punctuation..."},
+    {"page": 3, "text": "Full complete page text ending with proper punctuation..."},
+    {"page": 4, "text": "Full complete page text ending with proper punctuation..."}
   ]
 }
 
@@ -2475,8 +2476,9 @@ CRITICAL REQUIREMENTS:
 - Style must clearly match age group ${finalAgeGroup}.
 - Output ONLY valid JSON. No markdown, no explanations, no code blocks.
 - Each page text should be a single string with natural line breaks.
-- IMPORTANT: Generate COMPLETE text for each page. Do NOT truncate or cut text mid-word. Each page text must be a full, complete paragraph that ends with proper punctuation.
-- Do NOT add ellipsis "..." or cut text. Write the complete text for each page from start to finish.
+- TEXT LENGTH REQUIREMENT: Each page text must contain at least ${ageRubricForPrompt.wordCount.split('-')[0]} words (${ageRubricForPrompt.wordCount} per page is expected). Write FULL, COMPLETE text for each page.
+- COMPLETENESS: Each page text MUST end with proper sentence-ending punctuation (. ! ?). NEVER cut text mid-word. NEVER add ellipsis "..." unless it's part of the story.
+- Write the COMPLETE text for all 4 pages from start to finish. Do not stop early.
 `.trim();
 
     let pagesJSON = null;
@@ -2542,35 +2544,51 @@ CRITICAL REQUIREMENTS:
         if (pagesJSON && pagesJSON.pages && Array.isArray(pagesJSON.pages) && pagesJSON.pages.length >= pageCount) {
           pageTexts = pagesJSON.pages.slice(0, pageCount).map(p => p.text || "");
           
+          // Check for truncation - if found, retry instead of accepting the result
+          let hasTruncation = false;
+          const minWordsPerPage = parseInt(ageRubric.wordCount.split('-')[0]);
+          
           // Log and check truncation for each page text
           for (let i = 0; i < pageTexts.length; i++) {
             const pageText = pageTexts[i];
             const pageTextLength = pageText ? pageText.length : 0;
+            const pageWordCount = countWords(pageText);
             const pageTruncationCheck = detectTextTruncation(pageText);
             
             logBook('debug', 'Page text extracted', {
               pageNumber: i + 1,
               textLength: pageTextLength,
+              wordCount: pageWordCount,
+              minWordsExpected: minWordsPerPage,
               suspiciousTruncation: pageTruncationCheck.suspicious,
               truncationReason: pageTruncationCheck.reason
             });
             
-            if (pageTruncationCheck.suspicious) {
-              logBook('warn', 'Suspicious truncation detected in page text', {
+            // Check if text is suspiciously truncated or too short
+            if (pageTruncationCheck.suspicious || pageWordCount < minWordsPerPage) {
+              hasTruncation = true;
+              logBook('warn', 'Suspicious truncation or short text detected in page text - will retry', {
                 pageNumber: i + 1,
-                reason: pageTruncationCheck.reason,
+                reason: pageTruncationCheck.suspicious ? pageTruncationCheck.reason : 'word_count_too_low',
                 pattern: pageTruncationCheck.pattern,
                 textLength: pageTextLength,
+                wordCount: pageWordCount,
+                minWordsExpected: minWordsPerPage,
                 textPreview: pageTextLength > 0 ? pageText.substring(Math.max(0, pageTextLength - 50)) : ''
-              });
-              warnings.push({
-                code: 'TEXT_TRUNCATION_SUSPECTED',
-                message: `Page ${i + 1} text may be truncated (${pageTruncationCheck.reason})`
               });
             }
           }
           
-          break;
+          // Only accept the result if no truncation was detected
+          if (!hasTruncation) {
+            break;
+          } else {
+            logBook('warn', 'Text generation result rejected due to truncation, retrying', {
+              attempt,
+              maxAttempts: maxPageRetries
+            });
+            // Continue to next attempt
+          }
         }
       } catch (err) {
         console.log(`[${requestId}] Page text generation attempt ${attempt} failed:`, err.message);
@@ -2597,6 +2615,7 @@ CRITICAL REQUIREMENTS:
     // Use MASTER STORYTELLING PROMPT editor rules
     if (pagesJSON && pageTexts.length === pageCount) {
       try {
+        const ageRubricForEditor = getAgeRubric(finalAgeGroup);
         const editorPrompt = `
 ${masterPrompt}
 
@@ -2621,10 +2640,10 @@ ${JSON.stringify(pagesJSON.pages, null, 2)}
 OUTPUT FORMAT (JSON only):
 {
   "pages": [
-    {"page": 1, "text": "Improved page text with same structure - calmer, more musical"},
-    {"page": 2, "text": "Improved page text with same structure - calmer, more musical"},
-    {"page": 3, "text": "Improved page text with same structure - calmer, more musical"},
-    {"page": 4, "text": "Improved page text with same structure - calmer, more musical"}
+    {"page": 1, "text": "Improved complete page text ending with proper punctuation..."},
+    {"page": 2, "text": "Improved complete page text ending with proper punctuation..."},
+    {"page": 3, "text": "Improved complete page text ending with proper punctuation..."},
+    {"page": 4, "text": "Improved complete page text ending with proper punctuation..."}
   ]
 }
 
@@ -2633,8 +2652,9 @@ CRITICAL:
 - Keep same paragraph structure, only improve quality.
 - Preserve the same plot.
 - The child should want to hear it again tomorrow.
-- IMPORTANT: Generate COMPLETE text for each page. Do NOT truncate or cut text mid-word. Each page text must be a full, complete text that ends with proper punctuation.
-- Do NOT add ellipsis "..." or cut text. Write the complete text for each page from start to finish.
+- TEXT LENGTH: Each page text must maintain or exceed the original length (target: ${ageRubricForEditor.wordCount} words per page).
+- COMPLETENESS: Each page text MUST be COMPLETE. Each page text MUST end with proper sentence-ending punctuation (. ! ?). NEVER cut text mid-word. NEVER add ellipsis "..." unless it's part of the story.
+- Write the COMPLETE improved text for all 4 pages from start to finish. Do not stop early.
 `.trim();
         
         const editorResult = await generateTextUnified({
