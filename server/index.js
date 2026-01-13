@@ -2546,7 +2546,7 @@ CRITICAL REQUIREMENTS:
           
           // Check for truncation - if found, retry instead of accepting the result
           let hasTruncation = false;
-          const minWordsPerPage = parseInt(ageRubric.wordCount.split('-')[0]);
+          const minWordsPerPage = parseInt(ageRubricForPrompt.wordCount.split('-')[0]);
           
           // Log and check truncation for each page text
           for (let i = 0; i < pageTexts.length; i++) {
