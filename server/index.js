@@ -63,6 +63,7 @@ import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import { generateTextUnified } from "./services/gen-text.mjs";
 import { generateImageUnified } from "./services/gen-image.mjs";
+import { generateHeroReference } from "./services/hero-generation.mjs";
 import { decodeBase64ToBuffer } from "./utils/base64-decode.mjs";
 import { getGeminiAccessToken } from "./utils/gemini-auth.mjs";
 import {
@@ -93,6 +94,7 @@ import {
   generateSafeFallbackText,
   getWordBoundaryMode
 } from "./utils/quality-checker.mjs";
+import jobsRouter from "./routes/jobs.mjs";
 
 const ALLOWED_PHOTO_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -215,14 +217,6 @@ const upload = multer({
 // express.json only parses application/json content-type, so it won't interfere with multipart
 app.use(express.json({ limit: "35mb" }));
 
-
-// Validation helpers: see ./utils/validation.mjs
-// Prompt helpers: see ./prompts/storytelling.mjs
-
-
-// Quality checker helpers: see ./utils/quality-checker.mjs
-
-
 // Helper: Simple hash function for debug logging
 function simpleHash(str) {
   let hash = 0;
@@ -245,84 +239,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
-// Internal helper: Generate hero reference image (with retry and fallback)
-async function generateHeroReference(identity, photoBase64, mimeType, requestId) {
-  const prompt = buildHeroReferencePrompt(identity);
-  const maxAttempts = 3;
-  
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const attemptStart = Date.now();
-    try {
-      const result = await generateImageUnified({
-        prompt,
-        images: [{ base64: photoBase64, mimeType: mimeType || "image/jpeg" }],
-        requestId
-      });
-      const elapsed = Date.now() - attemptStart;
-      
-      // Extract base64 from dataUrl for backward compatibility
-      const base64 = result.dataUrl.split("base64,")[1];
-      
-      console.log(`[${requestId}] HERO: SUCCESS (attempt ${attempt}, ${elapsed}ms, mimeType: ${result.mimeType})`);
-      
-      return {
-        mimeType: result.mimeType,
-        dataUrl: result.dataUrl,
-        base64: base64
-      };
-    } catch (e) {
-      const elapsed = Date.now() - attemptStart;
-      const finishReason = e.finishReason;
-      const safetyRatings = e.safetyRatings;
-      const safetyStr = safetyRatings ? safetyRatings.map(r => `${r.category}:${r.probability}`).join(",") : "none";
-      
-      if (e.message === "NO_IMAGE_RETURNED") {
-        console.log(`[${requestId}] HERO: attempt ${attempt} failed (${elapsed}ms, finishReason: ${finishReason}, safetyRatings: ${safetyStr})`);
-      } else {
-        console.error(`[${requestId}] HERO: attempt ${attempt} exception:`, e?.message || e);
-      }
-      
-      if (attempt < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      }
-    }
-  }
-  
-  // Fallback: Try face-avoiding prompt
-  console.log(`[${requestId}] HERO: All ${maxAttempts} attempts failed, trying fallback (face-avoiding)...`);
-  try {
-    const fallbackPrompt = buildHeroReferenceFallbackPrompt(identity);
-    const startTime = Date.now();
-    const result = await generateImageUnified({
-      prompt: fallbackPrompt,
-      images: [{ base64: photoBase64, mimeType: mimeType || "image/jpeg" }],
-      requestId
-    });
-    const elapsed = Date.now() - startTime;
-    
-    // Extract base64 from dataUrl
-    const base64 = result.dataUrl.split("base64,")[1];
-    const finishReason = result.raw?.candidates?.[0]?.finishReason || result.raw?.response?.candidates?.[0]?.finishReason;
-    
-    console.log(`[${requestId}] HERO: FALLBACK SUCCESS (${elapsed}ms, mimeType: ${result.mimeType}, finishReason: ${finishReason})`);
-    
-    return {
-      mimeType: result.mimeType,
-      dataUrl: result.dataUrl,
-      base64: base64,
-      isFallback: true
-    };
-  } catch (e) {
-    const elapsed = Date.now() - startTime;
-    const finishReason = e.finishReason;
-    const safetyRatings = e.safetyRatings;
-    const safetyStr = safetyRatings ? safetyRatings.map(r => `${r.category}:${r.probability}`).join(",") : "none";
-    console.error(`[${requestId}] HERO: FALLBACK failed (${elapsed}ms, finishReason: ${finishReason}, safetyRatings: ${safetyStr})`);
-  }
-  
-  throw new Error("NO_HERO_IMAGE_RETURNED");
-}
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, requestId: req.requestId });
@@ -2160,64 +2076,8 @@ const outBase64 = imagePart.inlineData.data;
   }
 });
 
-// Serve job artifacts (reports and hero images) for a specific book
-// Security: Validate bookId to prevent path traversal
-app.get("/jobs/:bookId/report.html", (req, res) => {
-  const { bookId } = req.params;
-  
-  // Validate bookId format (UUID v4 pattern)
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId)) {
-    return res.status(400).json({ error: "INVALID_BOOK_ID", message: "bookId must be a valid UUID" });
-  }
-  
-  const filePath = path.join(__dirname, "jobs", bookId, "report.html");
-  
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Report not found" });
-  }
-  
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-  res.sendFile(filePath);
-});
-
-app.get("/jobs/:bookId/report.json", (req, res) => {
-  const { bookId } = req.params;
-  
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId)) {
-    return res.status(400).json({ error: "INVALID_BOOK_ID", message: "bookId must be a valid UUID" });
-  }
-  
-  const filePath = path.join(__dirname, "jobs", bookId, "report.json");
-  
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Report JSON not found" });
-  }
-  
-  res.setHeader("Content-Type", "application/json");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-  res.sendFile(filePath);
-});
-
-app.get("/jobs/:bookId/hero.jpg", (req, res) => {
-  const { bookId } = req.params;
-  
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId)) {
-    return res.status(400).json({ error: "INVALID_BOOK_ID", message: "bookId must be a valid UUID" });
-  }
-  
-  const filePath = path.join(__dirname, "jobs", bookId, "hero.jpg");
-  
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Hero image not found" });
-  }
-  
-  res.setHeader("Content-Type", "image/jpeg");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
-  res.sendFile(filePath);
-});
+// Job artifacts routes (reports, hero images) - see routes/jobs.mjs
+app.use("/jobs", jobsRouter);
 
 // Debug endpoint: configuration info (no secrets, no external API calls)
 const getConfigResponse = () => {
