@@ -47,3 +47,6 @@ docker compose exec backend printenv NODE_ENV
 Возможно, где-то в коде жестко прописан production. Давайте проверим логи более детально.
 
 
+
+
+

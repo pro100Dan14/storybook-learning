@@ -1,0 +1,19 @@
+---
+alwaysApply: true
+TITLE: Context7 default for external libs
+
+RULE (Always active):
+- Whenever the task involves ANY external library/framework/API usage, configuration, or uncertainty about API signatures/versions, you MUST use Context7 MCP before coding.
+- Do not guess APIs. Retrieve relevant docs/examples first using Context7 tools:
+  1) resolve-library-id (if library id unknown)
+  2) query-docs (use the resolved libraryId + the specific question)
+- Prefer one focused query per library. Summarize the retrieved docs into 5–10 bullet points, then implement.
+- For our backend stack, ALWAYS consult Context7 when touching:
+  FastAPI, SQLAlchemy, Alembic, Pydantic, asyncpg/Postgres, JWT/auth libs, Redis/Celery/RQ, S3/storage SDKs, image/ML libraries.
+- If Context7 is unavailable, explicitly say so and proceed with cautious, minimal assumptions.
+
+Example internal behavior:
+- Before writing code: “use context7” (implicitly via this rule), resolve lib id, query docs, then implement.
+
+(Keep this rule short and strict.)
+---

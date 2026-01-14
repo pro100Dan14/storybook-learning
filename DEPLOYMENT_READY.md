@@ -82,3 +82,6 @@ curl http://localhost:8787/health
 - Логи бекенда: `docker compose logs backend`
 
 
+
+
+

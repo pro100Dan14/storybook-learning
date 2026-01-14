@@ -85,3 +85,6 @@ docker compose logs backend | grep -i "identity\|tensorflow"
 **Правильное решение:** Установите зависимости (Решение 1) - тогда identity guard будет работать.
 
 
+
+
+

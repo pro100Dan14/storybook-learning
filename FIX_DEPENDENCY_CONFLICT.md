@@ -32,3 +32,6 @@ docker compose logs backend | tail -30
 Ошибка "Identity guard unavailable" должна исчезнуть.
 
 
+
+
+

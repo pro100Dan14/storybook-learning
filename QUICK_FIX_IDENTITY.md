@@ -67,3 +67,6 @@ docker compose restart backend
 **Временно:** Вариант 3 (отключить проверку)
 
 
+
+
+

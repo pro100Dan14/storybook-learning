@@ -48,3 +48,6 @@ docker compose logs backend | tail -20
 Попробуйте снова через Lovable.
 
 
+
+
+

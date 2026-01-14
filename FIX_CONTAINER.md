@@ -30,3 +30,6 @@ docker compose logs backend
 3. Ошибка при сборке
 
 
+
+
+
