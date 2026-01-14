@@ -21,8 +21,14 @@ These rules are mandatory for all changes. Optimize for: stability, privacy, mai
   - max 80 lines per function (split helpers)
   - max 300 lines per class (split responsibilities)
 - If any file approaches 1200 lines, you MUST split it in the same PR.
-- Do not create “god modules” (utils.py, services.py) that grow endlessly.
+- Do not create "god modules" (utils.py, services.py) that grow endlessly.
 - Split by domain + layer (routes/services/repos).
+
+EXCEPTIONS (documented technical debt):
+- server/index.js: ~2000 LOC allowed
+  - Contains main /api/book endpoint (~1300 LOC) which is tightly coupled
+  - Future refactor: split into routes/api-book.mjs + services/book-generator.mjs
+  - Tracking issue: split when adding new major features to /api/book
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2) REPO STRUCTURE (RECOMMENDED)

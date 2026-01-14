@@ -239,6 +239,25 @@ app.use((req, res, next) => {
   next();
 });
 
+// Middleware: Request logging (observability) - log method, path, status, duration
+app.use((req, res, next) => {
+  const start = Date.now();
+  
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    const { method, path } = req;
+    const status = res.statusCode;
+    
+    // Skip health checks and static files to reduce noise
+    if (path === "/health" || path.startsWith("/assets/")) return;
+    
+    // Log format: [requestId] METHOD /path -> STATUS (duration ms)
+    console.log(`[${req.requestId}] ${method} ${path} -> ${status} (${duration}ms)`);
+  });
+  
+  next();
+});
+
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, requestId: req.requestId });
