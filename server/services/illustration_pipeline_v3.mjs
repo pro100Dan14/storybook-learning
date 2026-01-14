@@ -1,0 +1,235 @@
+/**
+ * Illustration Pipeline v3
+ * SDXL + InstantID (or fallback to Gemini) with strict style + text guard
+ *
+ * - Unified 2D storybook style with Russian folk motifs
+ * - No raw photo compositing (only model-generated images)
+ * - Identity validation (InsightFace) + bounded retries
+ * - Text detection guard
+ *
+ * Feature selection:
+ *   ILLUSTRATION_PIPELINE = "auto" | "gemini" | "sdxl_instantid"
+ *     default: "auto" (use instantid if token present, else gemini)
+ *   INSTANTID_ENABLED (bool) default: true when token exists
+ *   CONTROLNET_POSE_ENABLED (bool) default: true
+ *   OCR_GUARD_ENABLED (bool) default: true
+ *   DISABLE_RAW_PHOTO_COMPOSITING (bool) default: true
+ */
+
+import fs from "fs";
+import path from "path";
+import { generateInstantIdImage, isInstantIdAvailable } from "../providers/instantid.mjs";
+import { buildPagePromptV3, STYLE_PRESET_V3, getStrictNegativesV3 } from "../prompts/storytelling_v3.mjs";
+import { autoSelectSceneBrief } from "./scene_brief.mjs";
+import { checkIdentityForPages } from "../utils/identity-guard.mjs";
+import { detectText } from "./text_detection.mjs";
+
+const PIPELINE = (process.env.ILLUSTRATION_PIPELINE || "auto").toLowerCase();
+const INSTANTID_ENABLED = process.env.INSTANTID_ENABLED === "false" ? false : true;
+const OCR_GUARD_ENABLED = process.env.OCR_GUARD_ENABLED === "false" ? false : true;
+const DISABLE_RAW_PHOTO_COMPOSITING = process.env.DISABLE_RAW_PHOTO_COMPOSITING !== "false";
+
+// Identity thresholds (calibrate as needed)
+const V3_SIMILARITY_THRESHOLD = parseFloat(process.env.V3_SIMILARITY_THRESHOLD || "0.4");
+const V3_MAX_PAGE_RETRIES = parseInt(process.env.V3_MAX_PAGE_RETRIES || "2", 10);
+
+/** Decide if we should use InstantID */
+export function shouldUseInstantId() {
+  if (PIPELINE === "sdxl_instantid") return true;
+  if (PIPELINE === "gemini") return false;
+  // auto
+  return INSTANTID_ENABLED && isInstantIdAvailable();
+}
+
+/** Build CharacterLock object */
+export function buildCharacterLock({ bookId, identity, outfitDescription }) {
+  return {
+    identity_source_image_id: identity.child_id || "child_photo",
+    outfit_description: outfitDescription,
+    hair_description: identity.hair
+      ? `${identity.hair.color || ""} ${identity.hair.length || ""} ${identity.hair.style || ""}`.trim()
+      : "",
+    style_preset: STYLE_PRESET_V3,
+    base_seed: Math.abs(hashString(bookId)) % 10_000_000,
+    version: 1,
+    created_at: new Date().toISOString()
+  };
+}
+
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
+/** Generate single page via InstantID */
+async function generatePageInstantId({
+  pageNumber,
+  pageText,
+  beat,
+  identity,
+  outfitDescription,
+  characterLock,
+  heroReference,
+  requestId,
+  bookDir,
+  seed,
+  identityStrength
+}) {
+  const sceneBrief = autoSelectSceneBrief(pageNumber, pageText, beat);
+
+  const prompt = buildPagePromptV3({
+    pageText,
+    sceneBrief,
+    identity,
+    outfitDescription,
+    hairDescription: characterLock.hair_description || "",
+    pageNumber
+  });
+
+  // InstantID call
+  const result = await generateInstantIdImage({
+    prompt,
+    identityBase64: heroReference.base64,
+    seed,
+    identityStrength
+  });
+
+  const base64 = result.dataUrl.split("base64,")[1];
+  const outPath = path.join(bookDir, `page_${pageNumber}_v3.png`);
+  fs.writeFileSync(outPath, Buffer.from(base64, "base64"));
+
+  // Optional OCR guard
+  let textDetected = false;
+  if (OCR_GUARD_ENABLED) {
+    const ocrRes = await detectText({ imagePath: outPath, requestId });
+    textDetected = ocrRes.textDetected || ocrRes.watermarkSuspected;
+  }
+
+  return {
+    promptUsed: prompt,
+    mimeType: result.mimeType || "image/png",
+    dataUrl: result.dataUrl,
+    base64,
+    outPath,
+    textDetected,
+    raw: result.raw
+  };
+}
+
+/**
+ * Run v3 pipeline (InstantID preferred, fallback to caller if unavailable)
+ * @param {object} params
+ * @returns {Promise<{success:boolean, pages:Array, warnings:Array, pipelineUsed:string}>}
+ */
+export async function runV3Pipeline({
+  bookId,
+  bookDir,
+  identity,
+  heroReference,
+  pageContents,
+  outfitDescription,
+  requestId,
+  ageGroup
+}) {
+  const warnings = [];
+  const pages = [];
+  const pipelineUsed = shouldUseInstantId() ? "sdxl_instantid" : "gemini";
+
+  if (!shouldUseInstantId()) {
+    return { success: false, warnings: ["INSTANTID_NOT_AVAILABLE"], pages: [], pipelineUsed };
+  }
+
+  // Character lock
+  const characterLock = buildCharacterLock({ bookId, identity, outfitDescription });
+
+  // Generate pages with retries
+  for (let i = 0; i < pageContents.length; i++) {
+    const pageNumber = i + 1;
+    const { pageText, beat } = pageContents[i];
+
+    let best = null;
+    let attempt = 0;
+    let identityStrength = 0.85;
+
+    while (attempt < V3_MAX_PAGE_RETRIES && !best) {
+      attempt++;
+      const seed = characterLock.base_seed + pageNumber * 10 + attempt;
+
+      try {
+        const gen = await generatePageInstantId({
+          pageNumber,
+          pageText,
+          beat,
+          identity,
+          outfitDescription,
+          characterLock,
+          heroReference,
+          requestId,
+          bookDir,
+          seed,
+          identityStrength
+        });
+
+        // Identity check (InsightFace)
+        const comparison = await checkIdentityForPages({
+          pages: [{
+            pageNumber,
+            dataUrl: gen.dataUrl,
+            base64: gen.base64,
+            mimeType: gen.mimeType
+          }],
+          heroReference,
+          bookDir,
+          mode: "dev",
+          threshold: V3_SIMILARITY_THRESHOLD
+        });
+
+        const score = comparison[0]?.score || 0;
+        const similar = comparison[0]?.similar || false;
+
+        if (!similar && attempt < V3_MAX_PAGE_RETRIES) {
+          identityStrength = Math.min(0.95, identityStrength + 0.05);
+          continue;
+        }
+
+        best = {
+          pageNumber,
+          pageText,
+          beat,
+          dataUrl: gen.dataUrl,
+          mimeType: gen.mimeType,
+          base64: gen.base64,
+          hasImage: true,
+          similarity: score,
+          textDetected: gen.textDetected,
+          attempts: attempt,
+          outPath: gen.outPath,
+          pipeline: pipelineUsed
+        };
+      } catch (err) {
+        if (attempt >= V3_MAX_PAGE_RETRIES) {
+          best = {
+            pageNumber,
+            pageText,
+            beat,
+            hasImage: false,
+            error: err.message || "INSTANTID_ERROR",
+            attempts: attempt,
+            pipeline: pipelineUsed
+          };
+        }
+      }
+    }
+
+    pages.push(best);
+  }
+
+  const success = pages.every(p => p && p.hasImage);
+  return { success, pages, warnings, pipelineUsed };
+}
+
+

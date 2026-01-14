@@ -2,7 +2,7 @@
  * Storytelling Prompts v2 - Fixed style (no contradiction)
  * 
  * KEY CHANGE: Unified art style for entire image.
- * - Face AND scene are both "modern 3D animated storybook" style
+ * - Face AND scene are both unified 2D storybook style
  * - Russian folk elements come from CONTENT (costumes, architecture, patterns)
  * - NO style conflict: removed "AVOID Pixar" contradictions
  * 
@@ -11,25 +11,20 @@
  */
 
 /**
- * Get unified 3D animated storybook art style (single source of truth)
+ * Get unified storybook art style (single source of truth)
  * Used for both hero assets and page illustrations
  * @returns {string} Art style description
  */
 export function getUnified3DAnimatedStyle() {
+  // Name kept for backward compatibility, but style is 2D storybook now
   return `
-ART STYLE - MODERN 3D ANIMATED STORYBOOK:
-- High-quality 3D animated movie style (Pixar, DreamWorks, Disney Frozen quality)
-- Smooth, clean cartoon rendering with soft realistic lighting
-- Child-friendly, warm, inviting aesthetic
-- Consistent lighting across face and environment
-- NOT flat 2D illustration, NOT anime, NOT sketchy, NOT photorealistic
-
-QUALITY STANDARDS:
-- Professional animation studio quality
-- Soft shadows, subtle ambient occlusion
-- Cohesive color palette throughout image
-- Sharp details on face and main subject
-- Slightly softer background (depth of field effect)
+ART STYLE - CHILDREN'S STORYBOOK (RUSSIAN FOLK MOTIFS):
+- 2D illustration with clean ink outlines
+- Subtle watercolor / gouache texture, paper grain visible
+- Warm, earthy palette with muted reds, ochres, sage greens, sky blue accents
+- Russian folk ornaments on clothing and decor
+- Professional book illustration quality
+- NOT 3D render, NOT Pixar, NOT photoreal, NOT anime
 `.trim();
 }
 
@@ -100,7 +95,7 @@ COMPOSITION - HEAD CLOSE-UP:
 - NO body, NO clothing visible, NO accessories unless in source photo
 
 FACE REQUIREMENTS - EXACT LIKENESS:
-The cartoon face must be INSTANTLY recognizable as the child in the photo.
+The illustrated face must be INSTANTLY recognizable as the child in the photo.
 Parents should immediately say "That's my child!"
 
 Copy from photo with precision:
@@ -110,7 +105,7 @@ Copy from photo with precision:
 - Exact mouth shape and lip proportions
 - Exact eyebrow shape and thickness
 - Exact hair color, cut, texture, and styling
-- Exact skin tone (convert to 3D animated equivalent)
+- Exact skin tone (convert to illustrated equivalent)
 
 ${mustKeepRules ? `MUST PRESERVE:\n${mustKeepRules}` : ""}
 

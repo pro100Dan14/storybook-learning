@@ -20,6 +20,7 @@ const COMPOSITE_SCRIPT = path.join(REPO_ROOT, "tools", "face_composite.py");
 
 const DEBUG_COMPOSITE = process.env.DEBUG_COMPOSITE === "true" || process.env.DEBUG_COMPOSITE === "1";
 const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
+const DISABLE_RAW_PHOTO_COMPOSITING = process.env.DISABLE_RAW_PHOTO_COMPOSITING !== "false";
 
 /**
  * Extract the last JSON line from stdout (handles noisy output)
@@ -57,7 +58,15 @@ function extractJsonFromStdout(stdout) {
  * @param {string} [params.requestId] - Request ID for logging
  * @returns {Promise<{ok: boolean, outputPath?: string, blendMethod?: string, error?: string}>}
  */
-export async function compositeHeroHead({ heroHeadPath, pageImagePath, outputPath, includeHair = true, requestId }) {
+export async function compositeHeroHead({ heroHeadPath, pageImagePath, outputPath, includeHair = true, requestId, isStylizedSource = true }) {
+  // Guard: disallow raw photo compositing
+  if (DISABLE_RAW_PHOTO_COMPOSITING && !isStylizedSource) {
+    return {
+      ok: false,
+      error: "RAW_PHOTO_COMPOSITING_DISABLED",
+      message: "Raw photo compositing is disabled by policy"
+    };
+  }
   if (!fs.existsSync(COMPOSITE_SCRIPT)) {
     return {
       ok: false,

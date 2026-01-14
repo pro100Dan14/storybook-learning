@@ -86,6 +86,7 @@ import {
   getMasterStorytellingPrompt,
   buildImagePromptWithIdentity
 } from "./prompts/storytelling.mjs";
+import { buildPagePromptV3 } from "./prompts/storytelling_v3.mjs";
 import {
   makeWordBoundaryRegex,
   countWords,
@@ -95,6 +96,8 @@ import {
   getWordBoundaryMode
 } from "./utils/quality-checker.mjs";
 import jobsRouter from "./routes/jobs.mjs";
+import { runV3Pipeline, shouldUseInstantId } from "./services/illustration_pipeline_v3.mjs";
+import { getOutfitDescription } from "./services/character_assets.mjs";
 
 const ALLOWED_PHOTO_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -1653,8 +1656,76 @@ CRITICAL: Output ONLY valid JSON. No markdown, no explanations.
     // Hero reference is already selected and saved above
     // heroReference is now the per-book hero from jobs/<book_id>/hero.jpg
 
+    // Common page content structure
+    const pageContents = pageTexts.map((text, idx) => ({
+      pageText: text,
+      beat: outlineLines[idx] || ""
+    }));
+
+    // Outfit lock (deterministic)
+    const outfitDescription = getOutfitDescription(bookId, identity, null);
+
+    // Pipeline selection (v3 InstantID preferred if available)
+    const pipelineMode = (process.env.ILLUSTRATION_PIPELINE || "auto").toLowerCase();
+    const preferInstantId = shouldUseInstantId();
+    const usePipelineV3 = pipelineMode === "sdxl_instantid" || (pipelineMode === "auto" && preferInstantId);
+
     // 4) Images (one per page with retry logic)
-    const outPages = [];
+    let outPages = [];
+
+    if (usePipelineV3) {
+      try {
+        const v3Result = await runV3Pipeline({
+          bookId,
+          bookDir,
+          identity,
+          heroReference,
+          pageContents,
+          outfitDescription,
+          requestId,
+          ageGroup: finalAgeGroup
+        });
+
+        if (v3Result.success) {
+          outPages = v3Result.pages;
+          warnings.push({ code: "PIPELINE", message: `Used pipeline v3 (${v3Result.pipelineUsed || "sdxl_instantid"})` });
+        } else {
+          warnings.push({ code: "PIPELINE_FALLBACK", message: "InstantID unavailable, using Gemini pipeline" });
+        }
+      } catch (err) {
+        warnings.push({ code: "PIPELINE_ERROR", message: `InstantID error: ${err.message}` });
+      }
+    }
+
+    // Fallback to existing Gemini pipeline if v3 not used or failed
+    if (outPages.length === 0) {
+      // Helper to create concrete scene for 4-page Russian folk fairy tale structure
+      const createConcreteScene = (pageNum, pageText, beat, prevPagesText) => {
+        if (pageNum === 1) {
+          // Page 1: Safe home / izba / forest edge / village
+          return "Russian folk fairy tale setting: hero at home (изба) or forest edge (опушка леса) or village (деревня), traditional Russian wooden house with carved window frames, warm domestic atmosphere, safe and welcoming, Russian folk fairy tale illustration style";
+        }
+        if (pageNum === 2) {
+          // Page 2: Gentle discovery: glowing mushroom, firebird feather, talking birch, magic path
+          return "Russian folk fairy tale discovery: hero finding something magical - glowing mushroom (светящийся гриб), firebird feather (перо жар-птицы), talking birch tree (говорящая береза), magic path (волшебная тропинка), gentle wonder, no fear, Russian folk fairy tale illustration style";
+        }
+        if (pageNum === 3) {
+          // Page 3: Small journey: crossing a brook, meeting kind fox/hare, finding a key, no danger
+          return "Russian folk fairy tale journey: hero crossing a brook (ручеек) or meeting kind fox (добрая лиса) or hare (заяц), finding a magic key (волшебный ключ), gentle adventure, no danger, Russian folk fairy tale illustration style";
+        }
+        if (pageNum === 4) {
+          // Page 4: Warm resolution: back home with small wonder (samovar steam, warm light, magic keepsake)
+          return "Russian folk fairy tale resolution: hero back home (дома), warm izba interior with samovar steam (пар от самовара), warm light, magic keepsake (волшебная вещица), cozy and joyful, Russian folk fairy tale illustration style";
+        }
+        // Fallback
+        return "Russian folk fairy tale scene, traditional setting, warm atmosphere";
+      };
+
+      // Debug: log identity hash
+      const identityHash = simpleHash(JSON.stringify(identity));
+      console.log(`[${requestId}] BOOK: identity hash: ${identityHash}, child_id: ${identity.child_id}, hero reference: ${heroReference ? "YES" : "NO"}`);
+      
+      let imageRetriesCount = 0; // Track pages that required retries
 
     // Helper to create concrete scene for 4-page Russian folk fairy tale structure
     const createConcreteScene = (pageNum, pageText, beat, prevPagesText) => {

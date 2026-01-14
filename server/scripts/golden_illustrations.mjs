@@ -49,7 +49,8 @@ function parseArgs() {
     ageGroup: "4-6",
     outputDir: "./golden_test_output",
     useV1: false,
-    noComposite: false
+    noComposite: false,
+    pipeline: "auto"
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -66,6 +67,8 @@ function parseArgs() {
       options.useV1 = true;
     } else if (arg === "--no-composite") {
       options.noComposite = true;
+    } else if (arg === "--pipeline" && args[i + 1]) {
+      options.pipeline = args[++i];
     } else if (arg === "--help" || arg === "-h") {
       console.log(`
 Golden Illustrations Test Script
@@ -80,6 +83,7 @@ Options:
   --output-dir    Output directory (default: ./golden_test_output)
   --v1            Use v1 pipeline instead of v2
   --no-composite  Disable face compositing (v2 only)
+  --pipeline      auto | gemini | sdxl_instantid (default: auto)
   --help, -h      Show this help message
 
 Example:
@@ -188,7 +192,7 @@ async function main() {
   console.log(`Photo: ${options.photo}`);
   console.log(`Pages: ${options.pages}`);
   console.log(`Age Group: ${options.ageGroup}`);
-  console.log(`Pipeline: ${options.useV1 ? "v1" : "v2"}`);
+  console.log(`Pipeline: ${options.useV1 ? "v1" : options.pipeline}`);
   console.log(`Composite: ${options.noComposite ? "disabled" : "enabled"}`);
   console.log("=".repeat(60));
 
@@ -215,6 +219,7 @@ async function main() {
   }
   process.env.ILLUSTRATION_V2_ENABLED = options.useV1 ? "false" : "true";
   process.env.CHARACTER_ASSETS_ENABLED = options.useV1 ? "false" : "true";
+  process.env.ILLUSTRATION_PIPELINE = options.pipeline;
 
   const startTime = Date.now();
   const metrics = {

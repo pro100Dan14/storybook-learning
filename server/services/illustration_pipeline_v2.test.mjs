@@ -38,6 +38,7 @@ import {
   parseTextForEnvironmentHints,
   formatEnvironmentBlock
 } from "./scene_brief.mjs";
+import { compositeHeroHead } from "./face_composite.mjs";
 
 // =============================================================================
 // Feature Flag Tests
@@ -257,6 +258,17 @@ describe("Scene Brief", () => {
     assert.ok(block.includes("Time of Day:"));
     assert.ok(block.includes("NO text"));
     assert.ok(block.includes("NO abstract gradients"));
+  });
+
+  it("disallows raw photo compositing when policy enabled", async () => {
+    const res = await compositeHeroHead({
+      heroHeadPath: "/tmp/fake.png",
+      pageImagePath: "/tmp/fake2.png",
+      outputPath: "/tmp/out.png",
+      isStylizedSource: false
+    });
+    assert.strictEqual(res.ok, false);
+    assert.strictEqual(res.error, "RAW_PHOTO_COMPOSITING_DISABLED");
   });
 });
 
