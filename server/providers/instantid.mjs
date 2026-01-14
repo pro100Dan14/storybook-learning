@@ -7,6 +7,12 @@
  * - Does not log prompts or images (PII safe).
  */
 
+let fetchFn = globalThis.fetch;
+if (!fetchFn) {
+  // Lazy load for Node <18
+  fetchFn = (...args) => import("node-fetch").then(({ default: f }) => f(...args));
+}
+
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_TOKEN;
 const INSTANTID_MODEL = process.env.INSTANTID_MODEL || "fofr/instantid-sdxl"; // example model slug
 
@@ -59,7 +65,7 @@ export async function generateInstantIdImage({
     input.control_strength = 0.7;
   }
 
-  const response = await fetch("https://api.replicate.com/v1/predictions", {
+  const response = await fetchFn("https://api.replicate.com/v1/predictions", {
     method: "POST",
     headers: {
       "Authorization": `Token ${REPLICATE_API_TOKEN}`,
@@ -85,7 +91,7 @@ export async function generateInstantIdImage({
   const start = Date.now();
   while (status === "starting" || status === "processing") {
     await new Promise(r => setTimeout(r, 1500));
-    const poll = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+    const poll = await fetchFn(`https://api.replicate.com/v1/predictions/${predictionId}`, {
       headers: { "Authorization": `Token ${REPLICATE_API_TOKEN}` }
     });
     resultData = await poll.json();
@@ -107,7 +113,7 @@ export async function generateInstantIdImage({
   }
 
   // Replicate returns URL; fetch and convert to base64
-  const imgResp = await fetch(firstImage);
+  const imgResp = await fetchFn(firstImage);
   const buf = Buffer.from(await imgResp.arrayBuffer());
   const mimeType = imgResp.headers.get("content-type") || "image/png";
   const base64 = buf.toString("base64");

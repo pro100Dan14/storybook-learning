@@ -1726,35 +1726,6 @@ CRITICAL: Output ONLY valid JSON. No markdown, no explanations.
       console.log(`[${requestId}] BOOK: identity hash: ${identityHash}, child_id: ${identity.child_id}, hero reference: ${heroReference ? "YES" : "NO"}`);
       
       let imageRetriesCount = 0; // Track pages that required retries
-
-    // Helper to create concrete scene for 4-page Russian folk fairy tale structure
-    const createConcreteScene = (pageNum, pageText, beat, prevPagesText) => {
-      if (pageNum === 1) {
-        // Page 1: Safe home / izba / forest edge / village
-        return "Russian folk fairy tale setting: hero at home (изба) or forest edge (опушка леса) or village (деревня), traditional Russian wooden house with carved window frames, warm domestic atmosphere, safe and welcoming, Russian folk fairy tale illustration style";
-      }
-      if (pageNum === 2) {
-        // Page 2: Gentle discovery: glowing mushroom, firebird feather, talking birch, magic path
-        return "Russian folk fairy tale discovery: hero finding something magical - glowing mushroom (светящийся гриб), firebird feather (перо жар-птицы), talking birch tree (говорящая береза), magic path (волшебная тропинка), gentle wonder, no fear, Russian folk fairy tale illustration style";
-      }
-      if (pageNum === 3) {
-        // Page 3: Small journey: crossing a brook, meeting kind fox/hare, finding a key, no danger
-        return "Russian folk fairy tale journey: hero crossing a brook (ручеек) or meeting kind fox (добрая лиса) or hare (заяц), finding a magic key (волшебный ключ), gentle adventure, no danger, Russian folk fairy tale illustration style";
-      }
-      if (pageNum === 4) {
-        // Page 4: Warm resolution: back home with small wonder (samovar steam, warm light, magic keepsake)
-        return "Russian folk fairy tale resolution: hero back home (дома), warm izba interior with samovar steam (пар от самовара), warm light, magic keepsake (волшебная вещица), cozy and joyful, Russian folk fairy tale illustration style";
-      }
-      // Fallback
-      return "Russian folk fairy tale scene, traditional setting, warm atmosphere";
-    };
-
-    // Debug: log identity hash
-    const identityHash = simpleHash(JSON.stringify(identity));
-    console.log(`[${requestId}] BOOK: identity hash: ${identityHash}, child_id: ${identity.child_id}, hero reference: ${heroReference ? "YES" : "NO"}`);
-    
-    let imageRetriesCount = 0; // Track pages that required retries
-    
     for (let i = 0; i < pageCount; i++) {
       const beat = outlineLines[i] || "";
       const pageText = pageTexts[i] || "";
@@ -1988,6 +1959,7 @@ const outBase64 = imagePart.inlineData.data;
 
       outPages.push(pageData);
     }
+    } // end Gemini fallback block
 
     // 5) Identity check - cross-page FaceID consistency (policy lives in identity-guard) with fallback
     logBook('info', 'Running identity check', { threshold: IDENTITY_THRESHOLD });
@@ -2153,15 +2125,6 @@ const outBase64 = imagePart.inlineData.data;
       message: String(e?.message || e),
       requestId,
       bookId
-    });
-    }
-  } catch (err) {
-    console.error(`[${requestId}] /api/book unhandled error:`, err);
-    return res.status(500).json({
-      ok: false,
-      error: "INTERNAL_ERROR",
-      message: err?.message || "Unknown error",
-      requestId
     });
   }
 });
