@@ -94,3 +94,6 @@ router.get("/:bookId/hero.jpg", (req, res) => {
 
 export default router;
 
+
+
+
