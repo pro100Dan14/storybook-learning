@@ -70,11 +70,17 @@ export function generateJSONReport({ bookId, heroReference, pages, identityResul
     },
     pages: pages.map((page, index) => {
       const result = identityResults[index];
+      const pageNum = page.pageNumber || index + 1;
       const pageObj = {
-        pageNumber: page.pageNumber || index + 1,
+        pageNumber: pageNum,
+        // Original field
         pageText: page.pageText || null,
+        // Lovable compatibility: "text" alias
+        text: page.pageText || null,
         hasImage: !!page.dataUrl,
         dataUrl: page.dataUrl || null,
+        // Lovable compatibility: "imageUrl" for carousel (relative path to saved file)
+        imageUrl: page.dataUrl ? `page_${pageNum}.png` : null,
         similarity: result?.score || null,
         passed: result?.similar || false,
         error: result?.error || null
@@ -365,6 +371,7 @@ export function generateHTMLReport({ bookId, heroReference, pages, identityResul
 
 /**
  * Save reports to book directory
+ * Also saves page images as separate files (page_1.png, page_2.png, etc.) for Lovable compatibility
  */
 export function saveReports({ bookDir, bookId, heroReference, pages, identityResults, threshold, mode }) {
   const jsonReport = generateJSONReport({ bookId, heroReference, pages, identityResults, threshold, mode });
@@ -375,6 +382,25 @@ export function saveReports({ bookDir, bookId, heroReference, pages, identityRes
   
   fs.writeFileSync(jsonPath, jsonReport, 'utf8');
   fs.writeFileSync(htmlPath, htmlReport, 'utf8');
+  
+  // Save page images as separate files for Lovable carousel compatibility
+  pages.forEach((page, index) => {
+    if (page.dataUrl) {
+      const pageNum = page.pageNumber || index + 1;
+      const imagePath = path.join(bookDir, `page_${pageNum}.png`);
+      
+      try {
+        // Extract base64 data from dataUrl
+        const base64Match = page.dataUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
+        if (base64Match && base64Match[1]) {
+          const imageBuffer = Buffer.from(base64Match[1], 'base64');
+          fs.writeFileSync(imagePath, imageBuffer);
+        }
+      } catch (err) {
+        console.error(`[report-generator] Failed to save page_${pageNum}.png:`, err.message);
+      }
+    }
+  });
   
   return { jsonPath, htmlPath };
 }

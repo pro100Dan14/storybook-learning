@@ -92,6 +92,35 @@ router.get("/:bookId/hero.jpg", (req, res) => {
   res.sendFile(filePath);
 });
 
+/**
+ * GET /jobs/:bookId/page_:pageNum.png
+ * Serve page illustration for Lovable carousel
+ */
+router.get("/:bookId/page_:pageNum.png", (req, res) => {
+  const { bookId, pageNum } = req.params;
+  
+  if (!validateBookId(bookId)) {
+    return res.status(400).json({ error: "INVALID_BOOK_ID", message: "bookId must be a valid UUID" });
+  }
+  
+  // Validate pageNum is a number
+  const pageNumber = parseInt(pageNum, 10);
+  if (isNaN(pageNumber) || pageNumber < 1 || pageNumber > 100) {
+    return res.status(400).json({ error: "INVALID_PAGE_NUM", message: "pageNum must be a number 1-100" });
+  }
+  
+  const filePath = path.join(serverDir, "jobs", bookId, `page_${pageNumber}.png`);
+  
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "NOT_FOUND", message: `Page ${pageNumber} image not found` });
+  }
+  
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Cache-Control", "public, max-age=86400"); // Cache for 24h
+  res.sendFile(filePath);
+});
+
 export default router;
 
 
