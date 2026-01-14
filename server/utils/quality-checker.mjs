@@ -33,6 +33,14 @@ function testUnicodePropertyEscapes() {
 testUnicodePropertyEscapes();
 
 /**
+ * Get current word boundary mode ('unicode' or 'fallback')
+ * @returns {string} Current mode
+ */
+export function getWordBoundaryMode() {
+  return WORD_BOUNDARY_MODE;
+}
+
+/**
  * Create word boundary regex (handles Latin, Cyrillic, underscores, alphanumerics)
  * Boundaries are "not a letter, digit, or underscore" on both sides
  * @param {string} word - Word to match

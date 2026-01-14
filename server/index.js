@@ -90,7 +90,8 @@ import {
   countWords,
   validatePageQuality,
   validateStoryQuality,
-  generateSafeFallbackText
+  generateSafeFallbackText,
+  getWordBoundaryMode
 } from "./utils/quality-checker.mjs";
 
 const ALLOWED_PHOTO_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -1518,7 +1519,7 @@ REQUIREMENTS:
     }
     
     // QUALITY CHECKLIST: Validate story quality after editor pass
-    logBook('info', 'Running quality checklist validation', { ageGroup: finalAgeGroup, heroName: safeName, unicodeMode: WORD_BOUNDARY_MODE });
+    logBook('info', 'Running quality checklist validation', { ageGroup: finalAgeGroup, heroName: safeName, unicodeMode: getWordBoundaryMode() });
     const qualityCheck = validateStoryQuality(pageTexts, finalAgeGroup, safeName);
     
     // Add all warnings to warnings array (non-blocking)
