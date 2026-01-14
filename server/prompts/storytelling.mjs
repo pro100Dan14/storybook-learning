@@ -171,9 +171,9 @@ export function getAgeRubric(ageGroup) {
 }
 
 /**
- * Build hero reference prompt (for stable master image)
- * Face: High-quality cartoon/animated style with PERFECT likeness to photo
- * Body/Background: Russian fairy tale style
+ * Build hero reference prompt - FACE ASSET ONLY
+ * Generates a clean close-up face portrait in modern cartoon style
+ * This face will be used as reference for all book pages
  * @param {object} identity - Identity object with character details
  * @returns {string} Prompt for hero reference generation
  */
@@ -188,53 +188,61 @@ export function buildHeroReferencePrompt(identity) {
     : "";
   
   return `
-Generate a stable master reference image of the child hero for a storybook.
+CREATE A FACE REFERENCE ASSET for a children's storybook character.
 
-FACE STYLE - HIGH-QUALITY CARTOON/ANIMATED (CRITICAL):
-- The FACE must be rendered in modern high-quality cartoon/animated style
-- Think Pixar, DreamWorks, or Disney quality for the FACE ONLY
-- Smooth, clean cartoon skin with subtle shading
-- Expressive cartoon eyes that MATCH the child's real eye shape and color
-- The face must be PERFECTLY recognizable as the same child from the photo
-- Cartoon stylization but with EXACT likeness - same face shape, same features, same proportions
-- NOT anime style, NOT flat 2D cartoon - high quality 3D-like cartoon rendering for face
+THIS IS A CLOSE-UP FACE PORTRAIT ONLY - NOT A FULL ILLUSTRATION.
 
-BODY AND CLOTHING - RUSSIAN FOLK STYLE:
-- Russian folk clothing (sarafan, kosovorotka, traditional garments)
-- Traditional patterns and decorations on clothing
-- Warm earthy color palette for clothes (ochre, muted reds, sage green)
+STYLE - MODERN HIGH-QUALITY CARTOON/3D ANIMATED:
+- Pixar / DreamWorks / Disney Frozen quality
+- Smooth, clean 3D-style cartoon rendering
+- Soft realistic lighting on the face
+- NOT flat 2D, NOT anime, NOT sketchy
+- Modern animated movie quality
 
-BACKGROUND - RUSSIAN FAIRY TALE:
-- Simple, soft folk-style background
-- Warm, cozy atmosphere
-- Traditional Russian elements if any background shown
+COMPOSITION - FACE CLOSE-UP:
+- ONLY the face and hair, nothing else
+- Head fills 80% of the image
+- Front-facing or slight 3/4 angle
+- Neutral background (solid light color or soft gradient)
+- No body, no clothing, no background scene
+- Just the face as a clean reference asset
 
-COMPOSITION:
-- Medium shot, head and shoulders, face clearly visible
-- Neutral expression, slight gentle smile allowed
-- Face takes up significant portion of the image
-- No accessories, no text, no logos, no modern clothing
-- Avoid far shots where the face becomes tiny and ambiguous
+FACE REQUIREMENTS - PERFECT LIKENESS TO PHOTO:
+- Copy the child's face from the photo with EXACT proportions
+- Same face shape (round, oval, etc.)
+- Same eye shape, eye color, eye spacing
+- Same nose shape and size
+- Same mouth shape and lip proportions  
+- Same eyebrow shape
+- Same hair color, haircut, and hair texture
+- Same skin tone
 
-Character identity (FACE MUST MATCH EXACTLY):
+The face must be INSTANTLY recognizable as the same child.
+If someone showed this cartoon face to the child's parents, they should immediately say "That's my child!"
+
+Character identity from photo:
 ${identityText}
 
-CRITICAL RULES - FACE LIKENESS:
-${mustKeepRules || "- Keep the same face, proportions, and hairstyle"}
-- Same face geometry, same eye distance, same nose shape, same mouth shape
-- Same eye color, same eyebrow shape, same face proportions
-- The cartoon face must be INSTANTLY recognizable as the child from the photo
-- Do not change hairline, hair color, or hair texture
+MUST PRESERVE EXACTLY:
+${mustKeepRules || "- All facial features from the photo"}
+- Face geometry and proportions
+- Eye color and shape
+- Hair color and style
+
+EXPRESSION:
+- Gentle, calm, neutral
+- Slight soft smile allowed
+- No exaggerated cartoon expressions
 
 FORBIDDEN:
-- No modern objects, no logos, no text
-- No accessories, no glasses, no hats (unless in original photo)
-- No extreme expressions or emotions
-- No modern clothing, no swimwear
-- Do NOT make the face look like a generic cartoon child - it must be THIS specific child
+- No body or clothing visible
+- No background scene
+- No text or logos
+- No accessories unless in original photo
+- Do NOT create a generic cartoon child face
+- Do NOT change any facial features
 
-This will be used as the PRIMARY identity reference for all storybook pages.
-The face style (cartoon) will be consistent across all pages.
+OUTPUT: A clean face portrait asset that will be copied onto every page of the book.
 `.trim();
 }
 
@@ -469,7 +477,7 @@ Generate a story that follows the canonical 4-page structure above.
 
 /**
  * Build image prompt with identity (supports hero reference)
- * Face: High-quality cartoon style with perfect likeness (matches hero.jpg)
+ * Uses hero.jpg face as a "stamp" to place on the character
  * Background/Environment: Russian fairy tale style
  * @param {string} pageText - Text of the current page
  * @param {string} scenePrompt - Scene description
@@ -498,63 +506,72 @@ export function buildImagePromptWithIdentity(pageText, scenePrompt, identity, pr
   ].filter(Boolean).join("\n");
   
   return `
-You are illustrating a page from a Russian folk fairy tale (русская народная сказка) for ages ${ageGroup}.
+ILLUSTRATE a page from a Russian folk fairy tale for ages ${ageGroup}.
 
-DUAL STYLE APPROACH:
+=== CRITICAL: TWO-LAYER APPROACH ===
 
-1. FACE STYLE - HIGH-QUALITY CARTOON (CRITICAL):
-- The child's FACE must be in modern high-quality cartoon/animated style
-- Match the hero reference image (hero.jpg) EXACTLY for face style and likeness
-- Pixar/DreamWorks quality cartoon face - smooth, expressive, recognizable
-- The face must be PERFECTLY recognizable as the same child
-- Same face shape, same eye color, same features as in hero.jpg
-- NOT anime, NOT flat 2D - high quality cartoon rendering
+LAYER 1 - THE FACE (from hero.jpg reference):
+You are provided with a hero.jpg face reference image.
+COPY that exact face onto the character in this illustration.
+- Use the EXACT same cartoon face from hero.jpg
+- Same face shape, same eyes, same nose, same mouth
+- Same hair color and hairstyle  
+- The face style is modern 3D cartoon (Pixar/DreamWorks quality)
+- DO NOT redraw or reinterpret the face - COPY it exactly
+- Think of it as placing the hero.jpg face onto the character's body
 
-2. BACKGROUND AND ENVIRONMENT - RUSSIAN FAIRY TALE:
+LAYER 2 - EVERYTHING ELSE (Russian fairy tale style):
 ${getRussianFairyTaleArtStyle()}
 
-3. CLOTHING - RUSSIAN FOLK STYLE:
-- Russian folk garments (sarafan, kosovorotka, traditional clothing)
-- Warm earthy palette (ochre, muted reds, sage green)
-- Traditional patterns and folk decorations
+CLOTHING - Russian folk style:
+- Traditional garments: sarafan, kosovorotka, valenki
+- Warm earthy colors: ochre, muted reds, sage green
+- Folk patterns and decorations
+
+BACKGROUND - Russian fairy tale:
+- Traditional Russian setting (forest, izba, field)
+- Folk art decorative elements
+- Warm, cozy atmosphere
 
 ${getAgeStyleNote(ageGroup) ? `${getAgeStyleNote(ageGroup)}\n` : ""}
 
-COMPOSITION:
-- Clear subject (the child hero)
-- Folk-style background with traditional Russian elements
-- No visual clutter
-- Decorative folk elements in environment
-- Face clearly visible and recognizable
+=== SCENE TO ILLUSTRATE ===
 
-No modern objects, no logos, no text on image.
+Story context:
+${prevPagesText ? `- Previous: ${prevPagesText}` : "- Beginning of story"}
+- Current page: ${pageText}
+${scenePrompt ? `- Scene description: ${scenePrompt}` : ""}
+
+=== COMPOSITION RULES ===
+
+- Child hero is the main subject
+- Face must be clearly visible and large enough to recognize
+- Medium shot preferred (full body or 3/4)
+- No extreme close-ups, no far shots where face is tiny
+- Face should take up at least 15-20% of image area
 
 ${FACE_IDENTITY_PROHIBITIONS}
 
-Story context for continuity:
-${prevPagesText ? `- Previous pages: ${prevPagesText}` : "- Beginning of story"}
-- Current page: ${pageText}
-${scenePrompt ? `- Scene: ${scenePrompt}` : ""}
+=== FACE CONSISTENCY (MANDATORY) ===
 
-Character identity (FACE MUST MATCH hero.jpg EXACTLY):
-${identity.short_visual_summary || ""}
-
-${FACE_IDENTITY_BLOCK}
-
-CRITICAL RULES - FACE CONSISTENCY:
-${mustKeepRules || "- Keep the same cartoon face style as in hero.jpg"}
-- The cartoon face style must be IDENTICAL to hero.jpg on every page
-- Same face geometry, same eye distance, same nose shape, same mouth shape
-- Do not change hairline, hair color, or cartoon face style
-- Avoid far shots where the face becomes tiny and unrecognizable
+The face on this page MUST be IDENTICAL to hero.jpg:
+${mustKeepRules || "- Same cartoon face as hero.jpg"}
+- Do NOT create a new face
+- Do NOT interpret the face differently
+- COPY the exact face from hero.jpg reference
+- Same proportions, same features, same style
 
 ${negativeRules ? `FORBIDDEN:\n${negativeRules}` : ""}
 
+No modern objects, no logos, no text on image.
 ${getRussianFairyTaleNegative()}
 
-${useHeroReference ? "IMPORTANT: Match the hero reference image (hero.jpg) EXACTLY for cartoon face style and likeness. The face on this page must look like the SAME cartoon child as in hero.jpg." : "Use the provided child photo as the identity reference."}
-Medium or wide shot preferred. Show full body or at least torso.
-Face should be clearly visible and large enough to be recognizable.
+${useHeroReference ? `
+=== HERO REFERENCE INSTRUCTION ===
+The hero.jpg image shows the character's face in cartoon style.
+USE THAT EXACT FACE on this page. Do not modify it.
+The face is a "stamp" - place it on the character unchanged.
+` : "Use the provided child photo as identity reference."}
 `.trim();
 }
 

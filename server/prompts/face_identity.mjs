@@ -1,20 +1,28 @@
 // Immutable face identity block - MUST be inserted verbatim into every page prompt
-// DO NOT modify this block per page. DO NOT override it with page-specific descriptions.
+// The hero.jpg face is a "stamp" that must be copied exactly onto every page
 
 export const FACE_IDENTITY_BLOCK = `
-FACE IDENTITY LOCK (IMMUTABLE - APPLIES TO ALL PAGES):
-- Use the exact same face from hero.jpg on every single page.
-- Do not change face shape, eye spacing, nose shape, lips shape, age, or ethnicity across pages.
-- Do not introduce a new face on any page.
-- Match the hero reference image exactly for face and hair.
-- The child photo is ONLY for confirmation, not to reinvent the face.
+=== FACE COPY INSTRUCTION (MANDATORY) ===
+The hero.jpg reference contains the character's face in cartoon style.
+This face is a FIXED ASSET - do not modify it.
+
+ON EVERY PAGE:
+1. Take the exact face from hero.jpg
+2. Place it on the character's body in the scene
+3. Do not redraw, reinterpret, or stylize the face differently
+4. The face is like a "sticker" - same on every page
+
+The cartoon face style (Pixar/DreamWorks quality) comes ONLY from hero.jpg.
+The rest of the image (body, clothes, background) is Russian fairy tale style.
 `.trim();
 
 export const FACE_IDENTITY_PROHIBITIONS = `
-HARD PROHIBITIONS (NEVER OVERRIDE):
-- Do not change face shape, eye spacing, nose, lips, age, ethnicity across pages.
-- Do not introduce a new face on any page.
-- Use the same face as in hero.jpg on every page.
+=== FACE PROHIBITIONS (NEVER VIOLATE) ===
+- NEVER redraw the face - copy it from hero.jpg
+- NEVER change face proportions between pages
+- NEVER create a new cartoon interpretation of the face
+- NEVER make the face look different from hero.jpg
+- The face must be PIXEL-PERFECT consistent with hero.jpg
 `.trim();
 
 
