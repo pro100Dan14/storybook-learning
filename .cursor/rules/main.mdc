@@ -1,0 +1,164 @@
+---
+alwaysApply: true
+# PROJECT RULES — BACKEND (Cursor)
+These rules are mandatory for all changes. Optimize for: stability, privacy, maintainability, testability.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0) CORE PRINCIPLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Do NOT break existing API contracts used by the frontend. Backward compatibility first.
+- Prefer incremental, reversible changes: feature flags, safe fallbacks, small PRs.
+- Add safety nets BEFORE refactors: smoke tests + logging + minimal integration tests.
+- Never log child PII, prompts, or raw generated text. Use hashes/lengths/metadata instead.
+- “Working code” > “clever code”. Keep it boring and debuggable.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) FILE SIZE / MODULARITY LIMITS (STRICT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Hard limit: NO file may exceed 1500 lines.
+- Soft limits:
+  - target < 400 lines per module file
+  - max 80 lines per function (split helpers)
+  - max 300 lines per class (split responsibilities)
+- If any file approaches 1200 lines, you MUST split it in the same PR.
+- Do not create “god modules” (utils.py, services.py) that grow endlessly.
+- Split by domain + layer (routes/services/repos).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2) REPO STRUCTURE (RECOMMENDED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Keep clear separation of concerns:
+
+/app
+  /api
+    /routes          # FastAPI routers only (thin)
+    deps.py          # dependencies (auth, db session, current user)
+  /core
+    config.py        # settings
+    logging.py       # structured logging + request id
+    security.py      # auth/jwt/password/crypto
+    errors.py        # error types + helpers
+  /models            # SQLAlchemy models (only mapping, no business logic)
+  /schemas           # Pydantic request/response schemas
+  /repositories      # DB access layer (queries, persistence)
+  /services          # business logic; calls repos + external providers
+  /integrations      # external APIs (LLM, image gen, storage, payments)
+  /prompts           # prompt templates + versioning (no secrets)
+  /tasks             # background jobs (Celery/RQ/etc), if used
+  /utils             # small focused helpers ONLY (avoid dumping ground)
+  main.py
+
+Rules:
+- Routes: only parse/validate input, call service, map to response.
+- Services: orchestrate business logic; no direct DB session if repos exist.
+- Repositories: DB queries only; no external API calls.
+- Integrations: network calls only + adapters; no business rules.
+- Prompts/templates must be versioned and deterministic.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3) CODING STANDARDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Python: type hints everywhere (public funcs/classes). No Any unless justified.
+- Use pydantic models for all request/response bodies.
+- Avoid deep nesting; prefer early returns.
+- Avoid global state; use dependency injection.
+- Any “magic numbers” => constants in a config/constants module.
+- Keep exceptions explicit; don’t swallow errors silently.
+
+Formatting/Lint (prefer, if present in repo):
+- black/ruff + isort (or ruff-format)
+- mypy (optional but recommended)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4) API CONTRACT & ERROR FORMAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- All endpoints must return consistent error schema:
+  { "error": { "code": "...", "message": "...", "details": {...optional} } }
+- Status codes:
+  - 400 bad request, 401 unauth, 403 forbidden, 404 not found, 409 conflict, 422 validation, 500 internal
+- Don’t leak internals in error messages. Log details server-side.
+- Keep OpenAPI accurate. If changing schema: update pydantic models.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5) DATABASE & MIGRATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- All schema changes go through Alembic migrations.
+- Use proper types: long text must be TEXT (not VARCHAR with default length).
+- Add indexes for frequent queries (user_id, book_id, status).
+- No N+1 queries: prefetch relations where needed.
+- Repo layer must expose pagination for list endpoints.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6) AI / GENERATION PIPELINES (TEXT & IMAGES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Generation logic lives in /services or /integrations, never inside routes.
+- Prompts:
+  - store templates in /app/prompts with versions (v1, v2…)
+  - never log raw prompts or child data
+  - log only: prompt_version, prompt_hash, token limits, durations
+- Guardrails:
+  - explicit content safety checks
+  - max retries bounded and configurable
+- Determinism:
+  - record model name, version, seed, and key params per generated asset
+- For images:
+  - enforce “no text/signature/watermark” via negative prompt + OCR check (if used)
+  - use per-book “Character Pack” (identity, hair/clothes) to keep consistency
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7) SECURITY & PRIVACY (CHILD PII)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Treat child name, age, photo, family details as sensitive PII.
+- Do not print/return more than required.
+- Provide deletion path for user data (even if admin-only for MVP).
+- Store secrets only in env vars; never commit keys.
+- Any embeddings/face features:
+  - avoid permanent storage unless necessary
+  - if stored: encrypt at rest + tie to book/user + delete with book/user
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8) FEATURE FLAGS & SAFE ROLLOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- All risky changes must be behind env flags:
+  e.g. FACE_ID_V2_ENABLED, OCR_GUARD_ENABLED, CHARACTER_PACK_ENABLED
+- Default: flags OFF in production until verified.
+- Always implement graceful fallback to the previous stable pipeline.
+- Add metrics: success rate, latency, retry counts, failure reasons.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9) LOGGING / OBSERVABILITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Add request_id / correlation_id middleware.
+- Structured logs (json) preferred.
+- Log:
+  - endpoint, status code, duration
+  - generation: model, seed, flags, output sizes/lengths
+- Never log raw generated text or user-provided photos.
+- Add /health endpoint and (optional) /ready for dependencies.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10) TESTING POLICY (MINIMUM BAR)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Every PR must include:
+- Smoke tests for critical flows (auth, create draft, generate text/image if applicable).
+- At least 1 integration test for any generation pipeline change (mock provider if needed).
+- For bug fixes: add a regression test reproducing the bug.
+
+Test structure:
+- /tests/unit/...
+- /tests/integration/...
+- Use fixtures for DB session and test user.
+- Tests must be deterministic; avoid real network calls.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11) “DEFINITION OF DONE” FOR CURSOR CHANGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A change is done only if:
+- all tests pass locally
+- API behavior is backward compatible
+- file limits respected (<1500 LOC)
+- logs/metrics added for new pipeline
+- error handling and fallbacks included
+- short PR-style summary is provided:
+  - what changed, where, why safe, how to rollback (flags)
+---
