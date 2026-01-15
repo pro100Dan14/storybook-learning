@@ -8,7 +8,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { assertPromptValid } from "../utils/prompt-linter.mjs";
+import { assertPromptValid, validateNoPhotoCompositing } from "../utils/prompt-linter.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -130,7 +130,6 @@ export function buildReplicatePromptV3({
   // Validate prompt (skip for short prompts - they're intentionally simple)
   // Only check for photo compositing mentions
   try {
-    const { validateNoPhotoCompositing } = await import("../utils/prompt-linter.mjs");
     const compositingCheck = validateNoPhotoCompositing(prompt);
     if (!compositingCheck.valid) {
       console.warn(`[Replicate v3] Prompt validation warning: ${compositingCheck.message}`);
