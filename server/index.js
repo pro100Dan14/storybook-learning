@@ -706,16 +706,27 @@ const handleBookUpload = (req, res, next) => {
 
 app.post("/api/book", handleBookUpload, async (req, res) => {
   const requestId = req.requestId;
+  const startTime = Date.now();
   
+  // A) Generate unique book_id and create per-book directory (before try for catch access)
+  const bookId = randomUUID();
+  const jobsDir = path.join(__dirname, "jobs");
+  const bookDir = path.join(jobsDir, bookId);
+  
+  // Structured logging helper (before try for catch access)
+  const logBook = (level, message, data = {}) => {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      bookId,
+      requestId,
+      message,
+      ...data
+    };
+    console.log(JSON.stringify(logEntry));
+  };
   
   try {
-    const startTime = Date.now();
-    
-    // A) Generate unique book_id and create per-book directory
-    const bookId = randomUUID();
-    const jobsDir = path.join(__dirname, "jobs");
-    const bookDir = path.join(jobsDir, bookId);
-    
     // Ensure jobs directory exists
     if (!fs.existsSync(jobsDir)) {
       fs.mkdirSync(jobsDir, { recursive: true });
@@ -729,19 +740,6 @@ app.post("/api/book", handleBookUpload, async (req, res) => {
     
     // Unified warnings array for non-fatal issues
     const warnings = [];
-    
-    // Structured logging helper
-    const logBook = (level, message, data = {}) => {
-      const logEntry = {
-        timestamp: new Date().toISOString(),
-        level,
-        bookId,
-        requestId,
-        message,
-        ...data
-      };
-      console.log(JSON.stringify(logEntry));
-    };
     
     const {
       name,
