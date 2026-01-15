@@ -16,17 +16,19 @@ The Replicate InstantID pipeline was producing inconsistent results:
 
 ## Solutions Implemented
 
-### 1. New Prompt Templates
+### 1. New Prompt Templates (SHORT VERSION)
 
 **Location**: `server/prompts/illustration/`
-- `replicate_page_v3.txt` - Positive prompt template (coherent style)
-- `replicate_negative_v3.txt` - Negative prompt (forbidden elements)
+- `replicate_page_v3.txt` - Short positive prompt (single paragraph, no blocks)
+- `replicate_negative_v3.txt` - Short negative prompt (comma-separated)
 
 **Key changes**:
+- **SHORT format**: Single paragraph, no complex blocks (prevents model confusion)
 - Single coherent style: "Russian folk storybook illustration"
-- NO mentions of Pixar/3D/photoreal (removed contradictions)
-- Explicit instruction: "render face as drawn/painted illustration, NOT pasted photo"
-- Character locks (hair, outfit, skin tone) consistent across all pages
+- NO mentions of Pixar/3D/Disney (removed all contradictions)
+- Explicit instruction: "DRAWN in the same illustration style (NOT a real photo)"
+- Character locks (hair, outfit) consistent across all pages
+- Simplified to avoid model misinterpreting long instructions
 
 ### 2. Prompt Linter
 

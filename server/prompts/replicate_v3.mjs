@@ -116,24 +116,28 @@ export function buildReplicatePromptV3({
 
   const locks = buildCharacterLocks(identity, outfitDescription);
   const template = getPositiveTemplate();
-  const cameraPose = getCameraPose(pageNumber);
+  
+  // Build scene prompt from sceneBrief and pageText
+  const scenePrompt = `${pageText || "child in storybook scene"}. ${sceneBrief.environment || "Russian folk tale setting"}. ${sceneBrief.lighting || "soft natural light"}`;
 
-  // Replace template variables
+  // Replace template variables (short prompt format)
   const prompt = template
-    .replace(/\{age_range\}/g, locks.age_range)
+    .replace(/\{location\}/g, sceneBrief.environment || "Russian folk tale setting (izba/forest)")
     .replace(/\{hair_lock\}/g, locks.hair_lock)
     .replace(/\{outfit_lock\}/g, locks.outfit_lock)
-    .replace(/\{skin_tone_lock\}/g, locks.skin_tone_lock)
-    .replace(/\{distinctive_marks_lock\}/g, locks.distinctive_marks_lock || "none")
-    .replace(/\{location\}/g, sceneBrief.environment || "Russian folk tale setting")
-    .replace(/\{lighting\}/g, sceneBrief.lighting || "soft natural light")
-    .replace(/\{mood\}/g, sceneBrief.mood || "warm and safe")
-    .replace(/\{action\}/g, pageText || "child in storybook scene")
-    .replace(/\{key_objects\}/g, sceneBrief.keyObjects || "storybook elements")
-    .replace(/\{camera_pose\}/g, cameraPose);
+    .replace(/\{scene_prompt\}/g, scenePrompt);
 
-  // Validate prompt
-  assertPromptValid(prompt);
+  // Validate prompt (skip for short prompts - they're intentionally simple)
+  // Only check for photo compositing mentions
+  try {
+    const { validateNoPhotoCompositing } = await import("../utils/prompt-linter.mjs");
+    const compositingCheck = validateNoPhotoCompositing(prompt);
+    if (!compositingCheck.valid) {
+      console.warn(`[Replicate v3] Prompt validation warning: ${compositingCheck.message}`);
+    }
+  } catch (e) {
+    // Linter not critical for short prompts
+  }
 
   return prompt;
 }

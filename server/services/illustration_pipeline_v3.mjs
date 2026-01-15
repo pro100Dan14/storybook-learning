@@ -101,6 +101,11 @@ async function generatePageInstantId({
   // Get negative prompt
   const negativePrompt = getNegativePrompt();
 
+  // Log prompt for debugging (first 200 chars only)
+  const promptPreview = prompt.length > 200 ? prompt.substring(0, 200) + "..." : prompt;
+  console.log(`[${requestId}] Page ${pageNumber} prompt: ${promptPreview}`);
+  console.log(`[${requestId}] Page ${pageNumber} identity_strength: ${identityStrength.toFixed(2)}`);
+
   // InstantID call - ONLY uses identity reference, NO additional photo inputs
   // This ensures model generates stylized face, not pastes photo
   const result = await generateInstantIdImage({
