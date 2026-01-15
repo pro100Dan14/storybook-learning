@@ -743,7 +743,6 @@ app.post("/api/book", handleBookUpload, async (req, res) => {
       console.log(JSON.stringify(logEntry));
     };
     
-    try {
     const {
       name,
       theme,
