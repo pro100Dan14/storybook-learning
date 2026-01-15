@@ -36,6 +36,18 @@ const DISABLE_RAW_PHOTO_COMPOSITING = process.env.DISABLE_RAW_PHOTO_COMPOSITING 
 const V3_SIMILARITY_THRESHOLD = parseFloat(process.env.V3_SIMILARITY_THRESHOLD || "0.4");
 const V3_MAX_PAGE_RETRIES = parseInt(process.env.V3_MAX_PAGE_RETRIES || "2", 10);
 
+// Model comparison mode: each page uses different model
+const MODEL_COMPARISON_MODE = process.env.MODEL_COMPARISON_MODE === "true" || 
+                              process.env.MODEL_COMPARISON_MODE === "1";
+
+// Models to test (one per page) - used when MODEL_COMPARISON_MODE=true
+const COMPARISON_MODELS = [
+  "instantid_artistic",
+  "instantid", 
+  "instantid_multicontrolnet",
+  "photomaker_style"
+];
+
 /** Decide if we should use InstantID */
 export function shouldUseInstantId() {
   if (PIPELINE === "sdxl_instantid") return true;
@@ -80,7 +92,8 @@ async function generatePageInstantId({
   requestId,
   bookDir,
   seed,
-  identityStrength
+  identityStrength,
+  modelKey = null  // Optional: specific model to use for this page
 }) {
   const sceneBrief = autoSelectSceneBrief(pageNumber, pageText, beat);
 
@@ -106,14 +119,22 @@ async function generatePageInstantId({
   const promptPreview = prompt.length > 200 ? prompt.substring(0, 200) + "..." : prompt;
   console.log(`[${requestId}] Page ${pageNumber} prompt: ${promptPreview}`);
   console.log(`[${requestId}] Page ${pageNumber} identity_strength: ${identityStrength.toFixed(2)}`);
+  
+  // Если указана конкретная модель, используем её
+  if (modelKey) {
+    console.log(`[${requestId}] Page ${pageNumber} using model: ${modelKey}`);
+  }
 
-  // Use model router if ILLUSTRATION_MODEL is set, otherwise fallback to legacy InstantID
-  const useModelRouter = process.env.ILLUSTRATION_MODEL && process.env.ILLUSTRATION_MODEL !== "legacy";
+  // Use model router if ILLUSTRATION_MODEL is set OR if modelKey specified, otherwise fallback to legacy InstantID
+  const useModelRouter = (process.env.ILLUSTRATION_MODEL && process.env.ILLUSTRATION_MODEL !== "legacy") || modelKey;
+  const selectedModel = modelKey || (process.env.ILLUSTRATION_MODEL && process.env.ILLUSTRATION_MODEL !== "legacy" ? process.env.ILLUSTRATION_MODEL : null);
   
   let result;
-  if (useModelRouter && isModelAvailable()) {
-    // Use new model router with feature flag
-    const defaults = getModelDefaults();
+  let modelUsed = "legacy";
+  
+  if (useModelRouter && isModelAvailable(selectedModel)) {
+    // Use new model router with feature flag or specific model
+    const defaults = getModelDefaults(selectedModel);
     result = await generateImageWithModel({
       prompt,
       identityBase64: heroReference.base64,
@@ -122,8 +143,10 @@ async function generatePageInstantId({
       identityStrength: identityStrength || defaults.identityStrength,
       guidanceScale: defaults.guidanceScale,
       numSteps: defaults.numSteps,
-      styleStrength: defaults.styleStrength
+      styleStrength: defaults.styleStrength,
+      modelKey: selectedModel  // Передаём конкретную модель
     });
+    modelUsed = selectedModel;
   } else {
     // Legacy InstantID call - ONLY uses identity reference, NO additional photo inputs
     // This ensures model generates stylized face, not pastes photo
@@ -134,6 +157,7 @@ async function generatePageInstantId({
       identityStrength,
       negativePrompt
     });
+    modelUsed = "legacy";
   }
 
   const base64 = result.dataUrl.split("base64,")[1];
@@ -154,7 +178,8 @@ async function generatePageInstantId({
     base64,
     outPath,
     textDetected,
-    raw: result.raw
+    raw: result.raw,
+    modelUsed: modelUsed  // Добавить информацию о модели
   };
 }
 
@@ -193,6 +218,13 @@ export async function runV3Pipeline({
       const pageNumber = i + 1;
       const { pageText, beat } = pageContents[i];
 
+      // В режиме сравнения моделей: каждая страница использует свою модель
+      let modelKeyForPage = null;
+      if (MODEL_COMPARISON_MODE && COMPARISON_MODELS[i]) {
+        modelKeyForPage = COMPARISON_MODELS[i];
+        console.log(`[${requestId}] MODEL_COMPARISON_MODE: Page ${pageNumber} will use model: ${modelKeyForPage}`);
+      }
+
       let best = null;
       let attempt = 0;
       // Start with LOW identity strength to avoid photo paste, increase if similarity low
@@ -216,7 +248,8 @@ export async function runV3Pipeline({
           requestId,
           bookDir,
           seed,
-          identityStrength
+          identityStrength,
+          modelKey: modelKeyForPage  // Передаём модель для этой страницы
         });
 
         // Identity check (InsightFace)
@@ -256,7 +289,8 @@ export async function runV3Pipeline({
           textDetected: gen.textDetected,
           attempts: attempt,
           outPath: gen.outPath,
-          pipeline: pipelineUsed
+          pipeline: pipelineUsed,
+          modelUsed: gen.modelUsed  // Добавить информацию о модели в результат
         };
       } catch (err) {
         if (attempt >= V3_MAX_PAGE_RETRIES) {
@@ -267,7 +301,8 @@ export async function runV3Pipeline({
             hasImage: false,
             error: err.message || "INSTANTID_ERROR",
             attempts: attempt,
-            pipeline: pipelineUsed
+            pipeline: pipelineUsed,
+            modelUsed: modelKeyForPage || "unknown"
           };
         }
       }

@@ -162,6 +162,26 @@ export ILLUSTRATION_MODEL=instantid_artistic
 
 ## Next Steps
 
+### Option 1: Use Model Comparison Mode (Recommended for Frontend)
+
+Enable model comparison mode to generate each page with a different model:
+
+```bash
+export MODEL_COMPARISON_MODE=true
+```
+
+This will generate:
+- Page 1: `instantid_artistic`
+- Page 2: `instantid`
+- Page 3: `instantid_multicontrolnet`
+- Page 4: `photomaker_style`
+
+Each page in the API response will include `modelUsed` field. You can then select the best model on the frontend based on visual comparison.
+
+See `MODEL_COMPARISON_MODE.md` for details.
+
+### Option 2: Run Bakeoff Script
+
 1. **Run bakeoff** to validate model selection:
    ```bash
    node server/scripts/model-bakeoff.mjs \
@@ -176,6 +196,7 @@ export ILLUSTRATION_MODEL=instantid_artistic
 
 3. **Enable winning model** for testing:
    ```bash
+   export MODEL_COMPARISON_MODE=false
    export ILLUSTRATION_MODEL=instantid_artistic
    ```
 
@@ -194,8 +215,10 @@ export ILLUSTRATION_MODEL=instantid_artistic
 
 ### Modified:
 - `server/services/face_composite.mjs` - Added hard stop guard
-- `server/services/illustration_pipeline_v3.mjs` - Added model router integration
+- `server/services/illustration_pipeline_v3.mjs` - Added model router integration + model comparison mode
+- `server/providers/model-router.mjs` - Added support for explicit model selection per page
 - `server/prompts/illustration/replicate_negative_v3.txt` - Strengthened negatives
+- `docker-compose.yml` - Added MODEL_COMPARISON_MODE and ILLUSTRATION_MODEL variables
 
 ## Testing
 

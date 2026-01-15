@@ -156,6 +156,7 @@ export function isModelAvailable(modelKey = null) {
  * @param {number} [params.guidanceScale] - Guidance scale (model-specific)
  * @param {number} [params.numSteps] - Number of steps (model-specific)
  * @param {number} [params.styleStrength] - Style strength (model-specific)
+ * @param {string} [params.modelKey] - Explicit model key to use (overrides ILLUSTRATION_MODEL)
  * @returns {Promise<{mimeType: string, dataUrl: string, raw: any, model: string}>}
  */
 export async function generateImageWithModel({
@@ -168,14 +169,20 @@ export async function generateImageWithModel({
   height = 1024,
   guidanceScale = undefined,
   numSteps = undefined,
-  styleStrength = undefined
+  styleStrength = undefined,
+  modelKey = null  // Optional: explicit model key
 }) {
   if (!isModelAvailable()) {
     throw new Error("MODEL_UNAVAILABLE: Missing REPLICATE_API_TOKEN");
   }
 
-  const modelKey = getSelectedModel();
-  const config = MODEL_CONFIGS[modelKey];
+  // Если modelKey указан явно, используем его, иначе берём из окружения
+  const finalModelKey = modelKey || getSelectedModel();
+  const config = MODEL_CONFIGS[finalModelKey];
+  
+  if (!config) {
+    throw new Error(`MODEL_NOT_FOUND: Model "${finalModelKey}" not found in MODEL_CONFIGS`);
+  }
 
   // Build input using model-specific mapper
   const input = config.inputMapper({
@@ -191,7 +198,7 @@ export async function generateImageWithModel({
     styleStrength
   });
 
-  console.log(`[ModelRouter] Using model: ${modelKey} (${config.slug})`);
+  console.log(`[ModelRouter] Using model: ${finalModelKey} (${config.slug})`);
 
   // Call Replicate API
   const response = await fetchFn("https://api.replicate.com/v1/predictions", {
@@ -252,7 +259,7 @@ export async function generateImageWithModel({
     mimeType,
     dataUrl,
     raw: resultData,
-    model: modelKey
+    model: finalModelKey
   };
 }
 
