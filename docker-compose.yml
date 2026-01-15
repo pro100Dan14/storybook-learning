@@ -20,6 +20,14 @@ services:
       - PROVIDER_TEXT=${PROVIDER_TEXT:-gemini}
       - PROVIDER_IMAGE=${PROVIDER_IMAGE:-gemini}
       
+      # InstantID / Replicate configuration (for better face identity)
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
+      - INSTANTID_MODEL=${INSTANTID_MODEL:-zsxkib/instant-id}
+      - ILLUSTRATION_PIPELINE=${ILLUSTRATION_PIPELINE:-auto}
+      - INSTANTID_ENABLED=${INSTANTID_ENABLED:-true}
+      - V3_SIMILARITY_THRESHOLD=${V3_SIMILARITY_THRESHOLD:-0.4}
+      - V3_MAX_PAGE_RETRIES=${V3_MAX_PAGE_RETRIES:-2}
+      
       # Google Cloud credentials (if using ADC instead of API key)
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/app/gcp-sa.json}
       

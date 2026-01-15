@@ -65,16 +65,21 @@ export async function generateInstantIdImage({
     input.control_strength = 0.7;
   }
 
+  // Replicate API: use 'model' for owner/model format, 'version' for sha256 hash
+  const isVersionHash = INSTANTID_MODEL.length === 64 && /^[a-f0-9]+$/.test(INSTANTID_MODEL);
+  const requestBody = isVersionHash 
+    ? { version: INSTANTID_MODEL, input }
+    : { model: INSTANTID_MODEL, input };
+
+  console.log(`[InstantID] Starting generation with model: ${INSTANTID_MODEL}`);
+  
   const response = await fetchFn("https://api.replicate.com/v1/predictions", {
     method: "POST",
     headers: {
       "Authorization": `Token ${REPLICATE_API_TOKEN}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      version: INSTANTID_MODEL,
-      input
-    })
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
@@ -89,15 +94,19 @@ export async function generateInstantIdImage({
   let status = data.status;
   let resultData = data;
   const start = Date.now();
+  console.log(`[InstantID] Prediction ${predictionId} started, status: ${status}`);
+  
   while (status === "starting" || status === "processing") {
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 2000));
     const poll = await fetchFn(`https://api.replicate.com/v1/predictions/${predictionId}`, {
       headers: { "Authorization": `Token ${REPLICATE_API_TOKEN}` }
     });
     resultData = await poll.json();
     status = resultData.status;
-    if (Date.now() - start > 120_000) {
-      throw new Error("INSTANTID_TIMEOUT");
+    const elapsed = Math.round((Date.now() - start) / 1000);
+    console.log(`[InstantID] Prediction ${predictionId} status: ${status} (${elapsed}s)`);
+    if (Date.now() - start > 180_000) { // 3 minutes timeout
+      throw new Error("INSTANTID_TIMEOUT: Generation took more than 3 minutes");
     }
   }
 
