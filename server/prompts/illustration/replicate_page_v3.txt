@@ -1,0 +1,44 @@
+You are illustrating a page of a premium children's storybook.
+
+STYLE (ONE COHERENT STYLE, DO NOT MIX):
+- high-quality Russian folk storybook illustration
+- clean ink outlines, subtle gouache/watercolor texture, visible paper grain
+- warm, cozy palette (ochre, muted reds, sage green, wood tones)
+- soft natural lighting, believable shadows, painterly but consistent
+- professional book illustration quality (not cheap, not sketchy)
+
+MAIN CHARACTER (LOCKED — must be consistent across all pages):
+- A child hero, age {age_range}
+- Face must resemble the provided identity reference image (same child), but rendered in the SAME storybook illustration style (NOT a real photo).
+- Hair (locked): {hair_lock}
+- Outfit (locked, identical across all pages): {outfit_lock}
+- Skin tone (locked): {skin_tone_lock}
+- Distinctive marks (if any): {distinctive_marks_lock}
+
+IMPORTANT IDENTITY INSTRUCTION:
+- Preserve the child's recognizable facial structure (eyes spacing, nose shape, mouth proportions, cheeks) based on the identity reference.
+- Render the face as a drawn/painted illustration matching the page style.
+- NEVER output a photorealistic face. Never look like a pasted photograph. No collage.
+
+SCENE (THIS PAGE):
+- Location: {location}
+- Time of day / lighting: {lighting}
+- Mood: {mood}
+- Action: {action}
+- Key objects: {key_objects}
+- Camera / pose: {camera_pose}
+- Ensure the child's face is clearly visible (front or 3/4 view), not tiny, not occluded.
+
+COMPOSITION:
+- Medium shot preferred (3/4 body or full body)
+- Face occupies at least 12–18% of image area
+- No extreme close-up, no far-away tiny face
+- Background should be coherent and detailed (not abstract)
+
+STRICTLY FORBIDDEN:
+- any text, letters, captions, watermarks, signatures, logos
+- photorealism, DSLR look, skin pores, realistic photo lighting
+- collage, cutout, pasted face, mismatched styles
+
+Output: one complete storybook illustration image, consistent style, no text.
+

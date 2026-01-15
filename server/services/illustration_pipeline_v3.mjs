@@ -19,10 +19,12 @@
 import fs from "fs";
 import path from "path";
 import { generateInstantIdImage, isInstantIdAvailable } from "../providers/instantid.mjs";
-import { buildPagePromptV3, STYLE_PRESET_V3, getStrictNegativesV3 } from "../prompts/storytelling_v3.mjs";
+import { buildReplicatePromptV3, getNegativePrompt } from "../prompts/replicate_v3.mjs";
+import { STYLE_PRESET_V3 } from "../prompts/storytelling_v3.mjs";
 import { autoSelectSceneBrief } from "./scene_brief.mjs";
 import { checkIdentityForPages } from "../utils/identity-guard.mjs";
 import { detectText } from "./text_detection.mjs";
+import { assertPromptValid, validateNoPhotoCompositing } from "../utils/prompt-linter.mjs";
 
 const PIPELINE = (process.env.ILLUSTRATION_PIPELINE || "auto").toLowerCase();
 const INSTANTID_ENABLED = process.env.INSTANTID_ENABLED === "false" ? false : true;
@@ -81,21 +83,32 @@ async function generatePageInstantId({
 }) {
   const sceneBrief = autoSelectSceneBrief(pageNumber, pageText, beat);
 
-  const prompt = buildPagePromptV3({
+  // Build prompt using new v3 template (validated, no contradictions)
+  const prompt = buildReplicatePromptV3({
+    pageNumber,
     pageText,
     sceneBrief,
     identity,
-    outfitDescription,
-    hairDescription: characterLock.hair_description || "",
-    pageNumber
+    outfitDescription
   });
 
-  // InstantID call
+  // Double-check: ensure no photo compositing mentioned
+  const compositingCheck = validateNoPhotoCompositing(prompt);
+  if (!compositingCheck.valid) {
+    throw new Error(`Prompt validation failed: ${compositingCheck.message}`);
+  }
+
+  // Get negative prompt
+  const negativePrompt = getNegativePrompt();
+
+  // InstantID call - ONLY uses identity reference, NO additional photo inputs
+  // This ensures model generates stylized face, not pastes photo
   const result = await generateInstantIdImage({
     prompt,
     identityBase64: heroReference.base64,
     seed,
-    identityStrength
+    identityStrength,
+    negativePrompt
   });
 
   const base64 = result.dataUrl.split("base64,")[1];
@@ -143,21 +156,27 @@ export async function runV3Pipeline({
     return { success: false, warnings: ["INSTANTID_NOT_AVAILABLE"], pages: [], pipelineUsed };
   }
 
-  // Character lock
-  const characterLock = buildCharacterLock({ bookId, identity, outfitDescription });
+    // Character lock
+    const characterLock = buildCharacterLock({ bookId, identity, outfitDescription });
 
-  // Generate pages with retries
-  for (let i = 0; i < pageContents.length; i++) {
-    const pageNumber = i + 1;
-    const { pageText, beat } = pageContents[i];
+    // Pipeline mode enforcement: use ONLY replicate_v3 for entire book
+    const pipelineMode = "replicate_v3";
+    console.log(`[${requestId}] Pipeline mode: ${pipelineMode} (enforced for entire book)`);
 
-    let best = null;
-    let attempt = 0;
-    let identityStrength = 0.85;
+    // Generate pages with retries
+    for (let i = 0; i < pageContents.length; i++) {
+      const pageNumber = i + 1;
+      const { pageText, beat } = pageContents[i];
 
-    while (attempt < V3_MAX_PAGE_RETRIES && !best) {
-      attempt++;
-      const seed = characterLock.base_seed + pageNumber * 10 + attempt;
+      let best = null;
+      let attempt = 0;
+      // Start with moderate identity strength, increase if similarity low
+      let identityStrength = parseFloat(process.env.INSTANTID_INITIAL_STRENGTH || "0.75");
+
+      while (attempt < V3_MAX_PAGE_RETRIES && !best) {
+        attempt++;
+        // Deterministic seed: base_seed + page_index * 101 (larger step for variation)
+        const seed = characterLock.base_seed + (pageNumber - 1) * 101 + attempt;
 
       try {
         const gen = await generatePageInstantId({
@@ -192,7 +211,9 @@ export async function runV3Pipeline({
         const similar = comparison[0]?.similar || false;
 
         if (!similar && attempt < V3_MAX_PAGE_RETRIES) {
-          identityStrength = Math.min(0.95, identityStrength + 0.05);
+          // Increase identity strength slightly, but cap at 0.9 to avoid photoreal
+          identityStrength = Math.min(0.9, identityStrength + 0.05);
+          console.log(`[${requestId}] Page ${pageNumber} attempt ${attempt}: similarity ${score.toFixed(3)} < ${V3_SIMILARITY_THRESHOLD}, retrying with strength ${identityStrength.toFixed(2)}`);
           continue;
         }
 

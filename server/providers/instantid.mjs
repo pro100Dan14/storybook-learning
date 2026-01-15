@@ -42,23 +42,39 @@ export async function generateInstantIdImage({
   seed = undefined,
   identityStrength = 0.85,
   width = 1024,
-  height = 1024
+  height = 1024,
+  negativePrompt = null
 }) {
   if (!isInstantIdAvailable()) {
     throw new Error("INSTANTID_UNAVAILABLE: Missing REPLICATE_API_TOKEN or model");
   }
 
+  // Stable parameters for consistent storybook style
+  // Lower guidance to avoid over-stylization that breaks faces
+  const guidanceScale = parseFloat(process.env.INSTANTID_GUIDANCE_SCALE || "6.0");
+  const numSteps = parseInt(process.env.INSTANTID_NUM_STEPS || "35", 10);
+  
+  // Ensure seed is provided (deterministic per page)
+  const finalSeed = seed ?? Math.floor(Math.random() * 10_000_000);
+  
   const input = {
     prompt,
     width,
     height,
-    seed: seed ?? Math.floor(Math.random() * 10_000_000),
+    seed: finalSeed,
     // Model-specific inputs (commonly supported by instantid forks)
     face_image: `data:image/jpeg;base64,${identityBase64}`,
-    face_strength: identityStrength,
-    guidance_scale: 6.5,
-    num_inference_steps: 28,
+    face_strength: identityStrength, // 0.7-0.9 range for balance
+    guidance_scale: guidanceScale, // 5-7 range to avoid face distortion
+    num_inference_steps: numSteps, // 28-40 for quality
+    // Style strength (if model supports it) - keep illustration style strong
+    style_strength: parseFloat(process.env.INSTANTID_STYLE_STRENGTH || "0.7"),
   };
+
+  // Add negative prompt if provided
+  if (negativePrompt) {
+    input.negative_prompt = negativePrompt;
+  }
 
   if (poseBase64) {
     input.control_image = `data:image/png;base64,${poseBase64}`;
