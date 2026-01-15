@@ -1669,6 +1669,7 @@ CRITICAL: Output ONLY valid JSON. No markdown, no explanations.
 
     // 4) Images (one per page with retry logic)
     let outPages = [];
+    let imageRetriesCount = 0; // Track pages that required retries
 
     if (usePipelineV3) {
       try {
@@ -1722,7 +1723,6 @@ CRITICAL: Output ONLY valid JSON. No markdown, no explanations.
       const identityHash = simpleHash(JSON.stringify(identity));
       console.log(`[${requestId}] BOOK: identity hash: ${identityHash}, child_id: ${identity.child_id}, hero reference: ${heroReference ? "YES" : "NO"}`);
       
-      let imageRetriesCount = 0; // Track pages that required retries
     for (let i = 0; i < pageCount; i++) {
       const beat = outlineLines[i] || "";
       const pageText = pageTexts[i] || "";
