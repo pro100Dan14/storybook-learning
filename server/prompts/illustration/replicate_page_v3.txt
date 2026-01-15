@@ -1,5 +1,14 @@
 You are illustrating a page of a premium children's storybook.
 
+CRITICAL FACE STYLE REQUIREMENT:
+- The child's face MUST be rendered as a HAND-DRAWN ILLUSTRATION in storybook style
+- Face should look like it was painted with gouache/watercolor, NOT a photograph
+- Face must match the illustration style of the entire page (ink outlines, painterly texture)
+- The identity reference photo is ONLY for facial structure reference - DO NOT copy photo pixels
+- Face should have the same artistic style as the rest of the illustration (flat, illustrated, storybook)
+- NO photorealistic skin texture, NO camera-like lighting on face, NO photo-like details
+- Face must be stylized to match the illustration style - flat colors, painterly texture, no photo realism
+
 STYLE (ONE COHERENT STYLE, DO NOT MIX):
 - high-quality Russian folk storybook illustration
 - clean ink outlines, subtle gouache/watercolor texture, visible paper grain
@@ -10,6 +19,9 @@ STYLE (ONE COHERENT STYLE, DO NOT MIX):
 MAIN CHARACTER (LOCKED — must be consistent across all pages):
 - A child hero, age {age_range}
 - Face must resemble the provided identity reference image (same child), but rendered in the SAME storybook illustration style (NOT a real photo).
+- Face style: HAND-DRAWN ILLUSTRATION with ink outlines and gouache/watercolor texture, matching the page style
+- Face must NOT look like a pasted photograph or photo cutout
+- Face must have the same artistic quality as the rest of the illustration
 - Hair (locked): {hair_lock}
 - Outfit (locked, identical across all pages): {outfit_lock}
 - Skin tone (locked): {skin_tone_lock}
@@ -18,7 +30,10 @@ MAIN CHARACTER (LOCKED — must be consistent across all pages):
 IMPORTANT IDENTITY INSTRUCTION:
 - Preserve the child's recognizable facial structure (eyes spacing, nose shape, mouth proportions, cheeks) based on the identity reference.
 - Render the face as a drawn/painted illustration matching the page style.
+- Face should be ILLUSTRATED, not photographic
+- Face should have visible brush strokes or ink outlines, matching the storybook style
 - NEVER output a photorealistic face. Never look like a pasted photograph. No collage.
+- Face must be stylized to match the illustration style - flat colors, painterly texture, no photo realism
 
 SCENE (THIS PAGE):
 - Location: {location}

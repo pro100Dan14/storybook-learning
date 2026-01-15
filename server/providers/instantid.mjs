@@ -68,12 +68,16 @@ export async function generateInstantIdImage({
     guidance_scale: guidanceScale, // 5-7 range to avoid face distortion
     num_inference_steps: numSteps, // 28-40 for quality
     // Style strength (if model supports it) - keep illustration style strong
-    style_strength: parseFloat(process.env.INSTANTID_STYLE_STRENGTH || "0.7"),
+    // Higher = more stylized, less photo-like
+    style_strength: parseFloat(process.env.INSTANTID_STYLE_STRENGTH || "0.8"),
   };
 
   // Add negative prompt if provided
   if (negativePrompt) {
     input.negative_prompt = negativePrompt;
+    console.log(`[InstantID] Negative prompt enabled (${negativePrompt.length} chars)`);
+  } else {
+    console.warn(`[InstantID] WARNING: No negative prompt provided! This may cause photo-like faces.`);
   }
 
   if (poseBase64) {

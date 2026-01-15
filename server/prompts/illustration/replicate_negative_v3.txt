@@ -1,5 +1,10 @@
 text, letters, typography, watermark, signature, logo, caption, autograph,
 photorealistic, photo, realistic skin texture, pores, DSLR, camera flash, cinematic 3D render,
 collage, cutout, pasted face, sticker face, mismatched face, uncanny valley,
-extra fingers, deformed hands, distorted face, asymmetrical eyes, bad anatomy
+extra fingers, deformed hands, distorted face, asymmetrical eyes, bad anatomy,
+photograph, photography, camera photo, real photo, actual photo, photo face, photo head,
+realistic face, photoreal face, photo-realistic, hyperrealistic, ultra realistic,
+photo cutout, face cutout, pasted photo, inserted photo, photo composite,
+skin texture, skin pores, realistic lighting, camera lighting, flash photography,
+photographic, photo-like, camera-like, lens flare, bokeh, depth of field
 

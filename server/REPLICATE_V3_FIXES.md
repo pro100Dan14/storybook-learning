@@ -61,10 +61,10 @@ const result = lintPrompt(prompt);
 
 **Environment variables**:
 ```bash
-INSTANTID_GUIDANCE_SCALE=6.0
+INSTANTID_GUIDANCE_SCALE=5.5-6.0
 INSTANTID_NUM_STEPS=35
-INSTANTID_INITIAL_STRENGTH=0.75
-INSTANTID_STYLE_STRENGTH=0.7
+INSTANTID_INITIAL_STRENGTH=0.6  # CRITICAL: Lower to avoid photo paste
+INSTANTID_STYLE_STRENGTH=0.8     # Higher for more stylization
 ```
 
 ### 4. Pipeline Mode Enforcement
@@ -128,10 +128,11 @@ No code changes needed - it's integrated into `/api/book` endpoint.
 
 ## Parameter Recommendations
 
-### For Consistent Faces
-- `identity_strength`: 0.75-0.85 (start lower, increase if similarity low)
-- `guidance_scale`: 5.5-6.5 (lower = more stable faces, higher = more style)
+### For Consistent Faces (Without Photo Paste)
+- `identity_strength`: 0.6-0.75 (CRITICAL: start at 0.6, max 0.75 to avoid photo paste)
+- `guidance_scale`: 5.5-6.0 (lower = more stable faces, higher = more style)
 - `num_steps`: 30-40 (more = better quality, slower)
+- `style_strength`: 0.8 (higher = more stylized, less photo-like)
 
 ### For Style Consistency
 - `style_strength`: 0.7-0.8 (if model supports it)
@@ -195,10 +196,12 @@ curl -X POST http://localhost:8787/api/book \
 ## Troubleshooting
 
 ### Still seeing pasted faces?
-- Check prompt validation logs (should see lint errors if any)
-- Verify `INSTANTID_STYLE_STRENGTH` is set (if model supports it)
-- Lower `identity_strength` to 0.7-0.75
-- Check that negative prompt is being sent
+- **CRITICAL**: Lower `INSTANTID_INITIAL_STRENGTH` to 0.6 (default is now 0.6)
+- Check logs for "Negative prompt enabled" message (should see it)
+- Verify `INSTANTID_STYLE_STRENGTH` is set to 0.8 (higher = more stylized)
+- Lower `INSTANTID_GUIDANCE_SCALE` to 5.5 if faces still look photo-like
+- Check that prompt contains "HAND-DRAWN ILLUSTRATION" instructions
+- Verify model supports `negative_prompt` parameter (some models don't)
 
 ### Inconsistent styles?
 - Verify prompt linting passes (check logs)

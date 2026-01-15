@@ -170,8 +170,9 @@ export async function runV3Pipeline({
 
       let best = null;
       let attempt = 0;
-      // Start with moderate identity strength, increase if similarity low
-      let identityStrength = parseFloat(process.env.INSTANTID_INITIAL_STRENGTH || "0.75");
+      // Start with LOW identity strength to avoid photo paste, increase if similarity low
+      // Lower values (0.6-0.65) = more stylized face, less photo-like
+      let identityStrength = parseFloat(process.env.INSTANTID_INITIAL_STRENGTH || "0.6");
 
       while (attempt < V3_MAX_PAGE_RETRIES && !best) {
         attempt++;
@@ -211,8 +212,9 @@ export async function runV3Pipeline({
         const similar = comparison[0]?.similar || false;
 
         if (!similar && attempt < V3_MAX_PAGE_RETRIES) {
-          // Increase identity strength slightly, but cap at 0.9 to avoid photoreal
-          identityStrength = Math.min(0.9, identityStrength + 0.05);
+          // Increase identity strength slightly, but cap at 0.75 to avoid photoreal faces
+          // Higher values tend to paste photo-like faces instead of stylized illustrations
+          identityStrength = Math.min(0.75, identityStrength + 0.05);
           console.log(`[${requestId}] Page ${pageNumber} attempt ${attempt}: similarity ${score.toFixed(3)} < ${V3_SIMILARITY_THRESHOLD}, retrying with strength ${identityStrength.toFixed(2)}`);
           continue;
         }
