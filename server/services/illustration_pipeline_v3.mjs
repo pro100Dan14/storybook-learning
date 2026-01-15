@@ -19,6 +19,7 @@
 import fs from "fs";
 import path from "path";
 import { generateInstantIdImage, isInstantIdAvailable } from "../providers/instantid.mjs";
+import { generateImageWithModel, isModelAvailable, getModelDefaults } from "../providers/model-router.mjs";
 import { buildReplicatePromptV3, getNegativePrompt } from "../prompts/replicate_v3.mjs";
 import { STYLE_PRESET_V3 } from "../prompts/storytelling_v3.mjs";
 import { autoSelectSceneBrief } from "./scene_brief.mjs";
@@ -40,7 +41,7 @@ export function shouldUseInstantId() {
   if (PIPELINE === "sdxl_instantid") return true;
   if (PIPELINE === "gemini") return false;
   // auto
-  return INSTANTID_ENABLED && isInstantIdAvailable();
+  return INSTANTID_ENABLED && (isInstantIdAvailable() || isModelAvailable());
 }
 
 /** Build CharacterLock object */
@@ -106,15 +107,34 @@ async function generatePageInstantId({
   console.log(`[${requestId}] Page ${pageNumber} prompt: ${promptPreview}`);
   console.log(`[${requestId}] Page ${pageNumber} identity_strength: ${identityStrength.toFixed(2)}`);
 
-  // InstantID call - ONLY uses identity reference, NO additional photo inputs
-  // This ensures model generates stylized face, not pastes photo
-  const result = await generateInstantIdImage({
-    prompt,
-    identityBase64: heroReference.base64,
-    seed,
-    identityStrength,
-    negativePrompt
-  });
+  // Use model router if ILLUSTRATION_MODEL is set, otherwise fallback to legacy InstantID
+  const useModelRouter = process.env.ILLUSTRATION_MODEL && process.env.ILLUSTRATION_MODEL !== "legacy";
+  
+  let result;
+  if (useModelRouter && isModelAvailable()) {
+    // Use new model router with feature flag
+    const defaults = getModelDefaults();
+    result = await generateImageWithModel({
+      prompt,
+      identityBase64: heroReference.base64,
+      negativePrompt,
+      seed,
+      identityStrength: identityStrength || defaults.identityStrength,
+      guidanceScale: defaults.guidanceScale,
+      numSteps: defaults.numSteps,
+      styleStrength: defaults.styleStrength
+    });
+  } else {
+    // Legacy InstantID call - ONLY uses identity reference, NO additional photo inputs
+    // This ensures model generates stylized face, not pastes photo
+    result = await generateInstantIdImage({
+      prompt,
+      identityBase64: heroReference.base64,
+      seed,
+      identityStrength,
+      negativePrompt
+    });
+  }
 
   const base64 = result.dataUrl.split("base64,")[1];
   const outPath = path.join(bookDir, `page_${pageNumber}_v3.png`);
