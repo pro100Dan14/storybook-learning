@@ -56,23 +56,30 @@ Response: {
 ```
 Used by UI for connection diagnostics. Returns no secrets.
 
-### Storybook Generation
+### Image Generation (Comfy Cloud)
 ```
-POST /api/book
-Request: {
-  name: string,
-  theme: string,
-  photoBase64: string,
-  ageGroup: "2-3" | "3-4" | "4-6" | "6-8"
-}
+POST /api/generate-images
+Content-Type: multipart/form-data
+Fields:
+  - photo: file (jpeg/png/webp)
+  - scenes: JSON array or string
+  - bookId (optional)
+  - seedBase (optional)
 Response: {
   ok: true,
-  bookId: string,
-  pages: [...],
-  ...
+  jobId: string,
+  anchorImage: { url, filename },
+  sceneImages: [{ url, filename }, ...],
+  metadata: { seeds, workflowVersionHash }
 }
 ```
-Generates a 4-page personalized storybook. All stories are exactly 4 pages (canonical structure enforced).
+Generates 1 anchor face image + N scene images using Comfy Cloud workflow.
+
+### Storybook Generation (Legacy)
+```
+POST /api/book
+```
+Legacy endpoint for full book generation (may require Gemini keys).
 
 ### Book Reports
 ```

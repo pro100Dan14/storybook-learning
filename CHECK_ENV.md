@@ -50,3 +50,6 @@ docker compose exec backend printenv NODE_ENV
 
 
 
+
+
+

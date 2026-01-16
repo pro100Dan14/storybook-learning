@@ -79,7 +79,7 @@ const MODEL_CONFIGS = {
       seed: params.seed,
       input_image: `data:image/jpeg;base64,${params.identityBase64}`,
       input_images: [`data:image/jpeg;base64,${params.identityBase64}`],
-      style_strength: params.styleStrength || 40, // 30-50 range as per docs
+      style_strength: params.styleStrength || 36, // 35-38 для лучшей идентичности лица (30-50 range as per docs)
       num_outputs: 1,
       num_inference_steps: params.numSteps || 40,
       guidance_scale: params.guidanceScale || 5.0
@@ -124,12 +124,13 @@ const MODEL_CONFIGS = {
  * Get selected model from environment
  */
 export function getSelectedModel() {
-  const modelKey = (process.env.ILLUSTRATION_MODEL || "legacy").toLowerCase();
+  // По умолчанию используем photomaker_style (лучшая модель по результатам сравнения)
+  const modelKey = (process.env.ILLUSTRATION_MODEL || "photomaker_style").toLowerCase();
   if (MODEL_CONFIGS[modelKey]) {
     return modelKey;
   }
-  console.warn(`[ModelRouter] Unknown model "${modelKey}", falling back to "legacy"`);
-  return "legacy";
+  console.warn(`[ModelRouter] Unknown model "${modelKey}", falling back to "photomaker_style"`);
+  return "photomaker_style";
 }
 
 /**
@@ -278,10 +279,13 @@ export function getModelDefaults(modelKey = null) {
       styleStrength: 0.8
     };
   } else if (selected === "photomaker_style" || selected === "photomaker") {
+    // Оптимизированные параметры для сохранения идентичности лица
+    // style_strength: 35-38 для баланса между стилизацией и идентичностью
+    // Меньше = больше идентичности, больше = больше стилизации
     return {
-      styleStrength: 40,
-      numSteps: 40,
-      guidanceScale: 5.0
+      styleStrength: parseFloat(process.env.PHOTOMAKER_STYLE_STRENGTH || "36"), // 35-38 для лучшей идентичности
+      numSteps: parseInt(process.env.PHOTOMAKER_NUM_STEPS || "40", 10),
+      guidanceScale: parseFloat(process.env.PHOTOMAKER_GUIDANCE_SCALE || "5.0")
     };
   } else if (selected.startsWith("instantid")) {
     return {

@@ -1,0 +1,93 @@
+{
+  "1": {
+    "inputs": {
+      "model": "seedream-4-5-251128",
+      "prompt": "IDENTITY LOCK: Use the child face from image0 exactly. Do not change facial features. No beautification, no stylization of the face. Do not change anythin, just place the entire face. Keep the same head shape, eyes, nose, lips, cheeks, skin tone, hairstyle — match image0 as closely as possible. The face must be identical to image0.\nDraw the body, hands, clothes and background in a friendly children’s cartoon painting style (simplified shapes, soft painterly background).\nSame outfit in every image: light blue hoodie, dark navy jeans, white sneakers. No text.\nAVOID: wrong identity, different face, anime/chibi, generic baby face, big eyes, blur, distortion, deformed hands, extra fingers, text, watermark, logo, signature, collage, cutout.\n",
+      "size_preset": "2048x2048 (1:1)",
+      "width": 2048,
+      "height": 2048,
+      "sequential_image_generation": "auto",
+      "max_images": 3,
+      "seed": 1253,
+      "watermark": false,
+      "fail_on_partial": true,
+      "image": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "ByteDanceSeedreamNode",
+    "_meta": {
+      "title": "ByteDance Seedream 4.5"
+    }
+  },
+  "11": {
+    "inputs": {
+      "image": "6d9113570e807247fd6470f4a643218c622d2e423e678e4040b46bc84a2e57ec.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "21": {
+    "inputs": {
+      "images.image0": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "BatchImagesNode",
+    "_meta": {
+      "title": "Batch Images"
+    }
+  },
+  "23": {
+    "inputs": {
+      "model": "seedream-4-5-251128",
+      "prompt": "GOAL: create an anchor face reference for a children’s storybook. The output must be a single illustrated portrait of the child, with maximum likeness to the reference photo.\nIDENTITY — ABSOLUTE PRIORITY: the child must look exactly like the reference child, instantly recognizable. Keep the same facial geometry: head shape, forehead, eyebrows, eye shape and spacing, nose shape, lips, cheeks, chin, ears, skin tone, hairstyle, and age appearance. Do not change facial features.\nRENDERING: semi-realistic painted portrait (not photorealistic), crisp sharp facial features, clear eyes with catchlights, subtle natural skin shading, clean edges, no blur, no smudge.\nSTYLE: premium children’s book illustration, soft watercolor/gouache feel, gentle warm light, clean linework only if needed (minimal).\nCOMPOSITION: close-up portrait (head and shoulders), centered, neutral background (soft gradient), front or slight 3/4 view, friendly natural smile, no accessories that hide face, no text.\nAVOID: chibi, kawaii, anime face, oversized eyes, generic baby face, simplified facial features, wrong identity, different hairstyle, different skin tone, heavy stylization, blur, distortion, text, watermark, logo, frame, border, collage, pasted/cutout look.",
+      "size_preset": "2048x2048 (1:1)",
+      "width": 2048,
+      "height": 2048,
+      "sequential_image_generation": "disabled",
+      "max_images": 1,
+      "seed": 1252,
+      "watermark": false,
+      "fail_on_partial": true,
+      "image": [
+        "21",
+        0
+      ]
+    },
+    "class_type": "ByteDanceSeedreamNode",
+    "_meta": {
+      "title": "ByteDance Seedream 4.5"
+    }
+  },
+  "26": {
+    "inputs": {
+      "filename_prefix": "Seedream-4",
+      "images": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "29": {
+    "inputs": {
+      "filename_prefix": "Seedream-4",
+      "images": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

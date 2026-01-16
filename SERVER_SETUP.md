@@ -72,20 +72,14 @@ ls -la
 nano .env
 ```
 
-### Вставьте в файл (замените `your_gemini_api_key_here` на ваш ключ):
+### Вставьте в файл (замените `your_comfy_cloud_api_key_here` на ваш ключ):
 
 ```
-GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_TEXT_MODEL=gemini-2.5-flash
-GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
-PROVIDER_TEXT=gemini
-PROVIDER_IMAGE=gemini
-FACE_ID_ENABLED=false
-FACE_ID_THRESHOLD=0.32
-FACE_ID_MAX_ATTEMPTS=2
-IDENTITY_SIMILARITY_THRESHOLD=0.62
-DEBUG_BOOK=0
-DEBUG_FACE_ID=false
+COMFY_CLOUD_API_KEY=your_comfy_cloud_api_key_here
+COMFY_CLOUD_BASE_URL=https://cloud.comfy.org
+
+# Optional (если используете старые Gemini endpoints)
+# GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 **Сохранение в nano:**
@@ -150,6 +144,9 @@ netstat -tuln | grep 8787
 ## Следующий шаг
 
 После настройки сервера переходим к настройке **автоматического деплоя через GitHub Actions**.
+
+
+
 
 
 

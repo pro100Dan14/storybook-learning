@@ -20,15 +20,9 @@ services:
       - PROVIDER_TEXT=${PROVIDER_TEXT:-gemini}
       - PROVIDER_IMAGE=${PROVIDER_IMAGE:-gemini}
       
-      # InstantID / Replicate configuration (for better face identity)
-      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
-      - INSTANTID_MODEL=${INSTANTID_MODEL:-zsxkib/instant-id}
-      - ILLUSTRATION_PIPELINE=${ILLUSTRATION_PIPELINE:-auto}
-      - ILLUSTRATION_MODEL=${ILLUSTRATION_MODEL:-legacy}
-      - MODEL_COMPARISON_MODE=${MODEL_COMPARISON_MODE:-false}
-      - INSTANTID_ENABLED=${INSTANTID_ENABLED:-true}
-      - V3_SIMILARITY_THRESHOLD=${V3_SIMILARITY_THRESHOLD:-0.4}
-      - V3_MAX_PAGE_RETRIES=${V3_MAX_PAGE_RETRIES:-2}
+      # Comfy Cloud configuration
+      - COMFY_CLOUD_API_KEY=${COMFY_CLOUD_API_KEY:-}
+      - COMFY_CLOUD_BASE_URL=${COMFY_CLOUD_BASE_URL:-https://cloud.comfy.org}
       
       # Google Cloud credentials (if using ADC instead of API key)
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/app/gcp-sa.json}

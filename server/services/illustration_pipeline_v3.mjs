@@ -37,10 +37,12 @@ const V3_SIMILARITY_THRESHOLD = parseFloat(process.env.V3_SIMILARITY_THRESHOLD |
 const V3_MAX_PAGE_RETRIES = parseInt(process.env.V3_MAX_PAGE_RETRIES || "2", 10);
 
 // Model comparison mode: each page uses different model
+// По умолчанию отключен - используем одну модель для всех страниц
 const MODEL_COMPARISON_MODE = process.env.MODEL_COMPARISON_MODE === "true" || 
                               process.env.MODEL_COMPARISON_MODE === "1";
 
 // Models to test (one per page) - used when MODEL_COMPARISON_MODE=true
+// В обычном режиме не используется - все страницы используют photomaker_style
 const COMPARISON_MODELS = [
   "instantid_artistic",
   "instantid", 
@@ -227,13 +229,15 @@ export async function runV3Pipeline({
 
       let best = null;
       let attempt = 0;
-      // Start with LOW identity strength to avoid photo paste, increase if similarity low
-      // Lower values (0.6-0.65) = more stylized face, less photo-like
+      // Для photomaker_style identity strength не используется (используется style_strength)
+      // Но оставляем для совместимости с другими моделями
       let identityStrength = parseFloat(process.env.INSTANTID_INITIAL_STRENGTH || "0.6");
 
       while (attempt < V3_MAX_PAGE_RETRIES && !best) {
         attempt++;
         // Deterministic seed: base_seed + page_index * 101 (larger step for variation)
+        // Важно: детерминированный seed для каждой страницы обеспечивает консистентность
+        // base_seed одинаков для всей книги, pageNumber даёт вариацию между страницами
         const seed = characterLock.base_seed + (pageNumber - 1) * 101 + attempt;
 
       try {

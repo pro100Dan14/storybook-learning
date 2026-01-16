@@ -35,3 +35,6 @@ docker compose logs backend | tail -30
 
 
 
+
+
+

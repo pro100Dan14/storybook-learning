@@ -44,13 +44,19 @@ function ensureLocalAdc() {
 ensureLocalAdc();
 // ---- end ADC bootstrap ----
 
-// Hard startup check: GEMINI_API_KEY required when using Gemini providers
+// Startup checks
 const providerText = (process.env.PROVIDER_TEXT || "gemini").toLowerCase();
 const providerImage = (process.env.PROVIDER_IMAGE || "gemini").toLowerCase();
 const geminiApiKey = process.env.GEMINI_API_KEY;
+
 if ((providerText === "gemini" || providerImage === "gemini") && (!geminiApiKey || geminiApiKey.trim() === "")) {
-  console.error("FATAL: GEMINI_API_KEY missing");
-  console.error("Set GEMINI_API_KEY in server/.env or environment");
+  console.warn("WARN: GEMINI_API_KEY missing (Gemini endpoints will fail)");
+}
+
+const comfyApiKey = process.env.COMFY_CLOUD_API_KEY;
+if (!comfyApiKey || comfyApiKey.trim() === "") {
+  console.error("FATAL: COMFY_CLOUD_API_KEY missing");
+  console.error("Set COMFY_CLOUD_API_KEY in server/.env or environment");
   process.exit(1);
 }
 
@@ -63,6 +69,8 @@ import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import { generateTextUnified } from "./services/gen-text.mjs";
 import { generateImageUnified } from "./services/gen-image.mjs";
+import { generateComfyImages } from "./services/comfy-generation.mjs";
+import { normalizeScenes } from "./services/comfy-workflow.mjs";
 import { generateHeroReference } from "./services/hero-generation.mjs";
 import { decodeBase64ToBuffer } from "./utils/base64-decode.mjs";
 import { getGeminiAccessToken } from "./utils/gemini-auth.mjs";
@@ -650,6 +658,91 @@ app.post("/api/image", async (req, res) => {
       error: "IMAGE_ERROR", 
       message: String(e?.message || e),
       requestId 
+    });
+  }
+});
+
+/**
+ * Comfy Cloud image generation endpoint
+ * POST /api/generate-images
+ * multipart/form-data: photo + scenes (JSON array or string) + bookId/seedBase (optional)
+ */
+app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
+  const requestId = req.requestId;
+  const startTime = Date.now();
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        ok: false,
+        error: "PHOTO_REQUIRED",
+        message: "Photo is required (multipart/form-data field: photo)",
+        requestId
+      });
+    }
+
+    // Validate mime type and buffer
+    if (req.file.mimetype && !ALLOWED_PHOTO_MIME_TYPES.has(req.file.mimetype)) {
+      return res.status(400).json({
+        ok: false,
+        error: "PHOTO_REQUIRED",
+        message: "Photo must be an image (jpeg/png/webp).",
+        requestId
+      });
+    }
+    if (!isValidImageBufferForMime(req.file.buffer, req.file.mimetype)) {
+      return res.status(400).json({
+        ok: false,
+        error: "PHOTO_REQUIRED",
+        message: "Photo must be a valid image file (jpeg/png/webp).",
+        requestId
+      });
+    }
+
+    const scenesInput =
+      req.body?.scenes ||
+      req.body?.scenesText ||
+      req.body?.scene ||
+      req.body?.scenesJson ||
+      "";
+
+    const scenes = normalizeScenes(scenesInput);
+    if (!scenes || scenes.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "SCENES_REQUIRED",
+        message: "Scenes are required (array or string).",
+        requestId
+      });
+    }
+
+    const bookId = req.body?.bookId || req.body?.jobId || null;
+    const seedBase = req.body?.seedBase || req.body?.seed || null;
+
+    const result = await generateComfyImages({
+      photoBuffer: req.file.buffer,
+      photoFilename: req.file.originalname,
+      photoMimeType: req.file.mimetype,
+      scenes,
+      seedBase,
+      bookId
+    });
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[${requestId}] COMFY: job=${result.jobId} scenes=${result.sceneImages.length} (${totalTime}ms)`);
+
+    return res.json({
+      ok: true,
+      requestId,
+      ...result
+    });
+  } catch (e) {
+    console.error(`[${requestId}] COMFY error:`, e?.message || e);
+    return res.status(500).json({
+      ok: false,
+      error: "COMFY_ERROR",
+      message: String(e?.message || e),
+      requestId
     });
   }
 });
