@@ -1,9 +1,10 @@
 /**
  * Comfy workflow builder for ByteDance Seedream (Comfy Cloud)
  *
- * Requirements:
- * - Prompt #1 (anchor) remains unchanged from template
+ * Requirements (per Comfy API behavior):
+ * - Prompts are swapped between anchor and scenes nodes
  * - Prompt #2 = BASE_PREFIX + renderScenes(scenes) + BASE_SUFFIX
+ * - Prompt #1 (template anchor prompt) is applied to scenes node
  */
 
 import fs from "fs";
@@ -192,9 +193,12 @@ export function buildWorkflow({
   const scenesCount = normalizedScenes.length;
   const prompt2 = `${PROMPT2_BASE_PREFIX}${renderScenes(normalizedScenes)}${PROMPT2_BASE_SUFFIX}`;
 
-  // Do NOT modify anchor prompt (Prompt #1)
-  // Modify scenes prompt (Prompt #2)
-  scenesNode.inputs.prompt = prompt2;
+  // Swap prompts between nodes:
+  // - Anchor node gets Prompt #2 (BASE + SCENES)
+  // - Scenes node gets Prompt #1 from template
+  const templatePrompt1 = anchorNode?.inputs?.prompt || "";
+  anchorNode.inputs.prompt = prompt2;
+  scenesNode.inputs.prompt = templatePrompt1;
   scenesNode.inputs.max_images = scenesCount;
 
   const seeds = seedsOverride || computeSeeds({ seedBase, bookId });

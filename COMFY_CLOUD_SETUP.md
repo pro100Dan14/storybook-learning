@@ -9,11 +9,12 @@ COMFY_CLOUD_API_KEY=your_comfy_cloud_api_key_here
 COMFY_CLOUD_BASE_URL=https://cloud.comfy.org
 ```
 
-## Optional Variables
+## Gemini (Required for scene text generation)
 
 ```env
-# If still using legacy Gemini endpoints (optional)
 GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_TEXT_MODEL=gemini-2.5-flash
+PROVIDER_TEXT=gemini
 ```
 
 ## Notes
