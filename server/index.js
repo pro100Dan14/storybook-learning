@@ -48,9 +48,13 @@ ensureLocalAdc();
 const providerText = (process.env.PROVIDER_TEXT || "gemini").toLowerCase();
 const providerImage = (process.env.PROVIDER_IMAGE || "gemini").toLowerCase();
 const geminiApiKey = process.env.GEMINI_API_KEY;
+const adcPath = resolveAdcPath(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+const adcExists = adcPath ? fs.existsSync(adcPath) : false;
 
-if ((providerText === "gemini" || providerImage === "gemini") && (!geminiApiKey || geminiApiKey.trim() === "")) {
-  console.warn("WARN: GEMINI_API_KEY missing (Gemini endpoints will fail)");
+if ((providerText === "gemini" || providerImage === "gemini") && (!geminiApiKey || geminiApiKey.trim() === "") && !adcExists) {
+  console.error("FATAL: GEMINI_API_KEY missing and ADC file not found");
+  console.error("Set GEMINI_API_KEY or mount GOOGLE_APPLICATION_CREDENTIALS");
+  process.exit(1);
 }
 
 const comfyApiKey = process.env.COMFY_CLOUD_API_KEY;
@@ -71,6 +75,7 @@ import { generateTextUnified } from "./services/gen-text.mjs";
 import { generateImageUnified } from "./services/gen-image.mjs";
 import { generateComfyImages } from "./services/comfy-generation.mjs";
 import { normalizeScenes } from "./services/comfy-workflow.mjs";
+import { generateScenesFromGemini } from "./services/scene-generator.mjs";
 import { generateHeroReference } from "./services/hero-generation.mjs";
 import { decodeBase64ToBuffer } from "./utils/base64-decode.mjs";
 import { getGeminiAccessToken } from "./utils/gemini-auth.mjs";
@@ -706,14 +711,19 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
       req.body?.scenesJson ||
       "";
 
-    const scenes = normalizeScenes(scenesInput);
+    let scenes = normalizeScenes(scenesInput);
+    let scenesText = null;
+
     if (!scenes || scenes.length === 0) {
-      return res.status(400).json({
-        ok: false,
-        error: "SCENES_REQUIRED",
-        message: "Scenes are required (array or string).",
+      // Generate scenes via Gemini if not provided by client
+      const generated = await generateScenesFromGemini({
+        name: req.body?.name || "",
+        theme: req.body?.theme || "",
+        count: Number(req.body?.sceneCount || 3),
         requestId
       });
+      scenes = generated.scenes;
+      scenesText = generated.scenesText;
     }
 
     const bookId = req.body?.bookId || req.body?.jobId || null;
@@ -725,7 +735,8 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
       photoMimeType: req.file.mimetype,
       scenes,
       seedBase,
-      bookId
+      bookId,
+      includeDataUrl: true
     });
 
     const totalTime = Date.now() - startTime;
@@ -734,7 +745,9 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
     return res.json({
       ok: true,
       requestId,
-      ...result
+      ...result,
+      scenes,
+      scenesText
     });
   } catch (e) {
     console.error(`[${requestId}] COMFY error:`, e?.message || e);

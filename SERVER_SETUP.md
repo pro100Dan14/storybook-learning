@@ -78,8 +78,10 @@ nano .env
 COMFY_CLOUD_API_KEY=your_comfy_cloud_api_key_here
 COMFY_CLOUD_BASE_URL=https://cloud.comfy.org
 
-# Optional (если используете старые Gemini endpoints)
-# GEMINI_API_KEY=your_gemini_api_key_here
+# Gemini (нужно для генерации сцен)
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_TEXT_MODEL=gemini-2.5-flash
+PROVIDER_TEXT=gemini
 ```
 
 **Сохранение в nano:**

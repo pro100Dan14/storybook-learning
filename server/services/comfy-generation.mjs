@@ -11,6 +11,26 @@ import {
 } from "./comfy-cloud-client.mjs";
 import { buildWorkflow, computeSeeds } from "./comfy-workflow.mjs";
 
+const COMFY_API_KEY = process.env.COMFY_CLOUD_API_KEY || "";
+
+let fetchFn = globalThis.fetch;
+if (!fetchFn) {
+  fetchFn = (...args) => import("node-fetch").then(({ default: f }) => f(...args));
+}
+
+async function fetchDataUrl(url) {
+  const headers = COMFY_API_KEY ? { "X-API-Key": COMFY_API_KEY } : {};
+  const res = await fetchFn(url, { headers });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`COMFY_VIEW_FAILED: ${res.status} ${res.statusText} ${errText.substring(0, 200)}`);
+  }
+  const mimeType = res.headers.get("content-type") || "image/png";
+  const buf = Buffer.from(await res.arrayBuffer());
+  const base64 = buf.toString("base64");
+  return `data:${mimeType};base64,${base64}`;
+}
+
 function normalizeFileEntry(entry) {
   if (!entry) return null;
   if (typeof entry === "string") {
@@ -82,7 +102,8 @@ export async function generateComfyImages({
   scenes,
   seedBase,
   bookId,
-  timeoutMs = 180000
+  timeoutMs = 180000,
+  includeDataUrl = true
 }) {
   // 1) Upload image
   const upload = await uploadImage(
@@ -139,14 +160,22 @@ export async function generateComfyImages({
     }
   }
 
+  const anchorUrl = getFileUrl(result.anchor.filename, result.anchor.type || "output");
   const anchorImage = {
     filename: result.anchor.filename,
-    url: getFileUrl(result.anchor.filename, result.anchor.type || "output")
+    url: anchorUrl
   };
-  const sceneImages = result.scenes.map((img) => ({
-    filename: img.filename,
-    url: getFileUrl(img.filename, img.type || "output")
-  }));
+  const sceneImages = result.scenes.map((img) => {
+    const url = getFileUrl(img.filename, img.type || "output");
+    return { filename: img.filename, url };
+  });
+
+  if (includeDataUrl) {
+    anchorImage.dataUrl = await fetchDataUrl(anchorUrl);
+    for (const img of sceneImages) {
+      img.dataUrl = await fetchDataUrl(img.url);
+    }
+  }
 
   return {
     jobId: result.promptId,

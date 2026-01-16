@@ -41,7 +41,8 @@ async function main() {
     photoMimeType: "image/jpeg",
     scenes,
     bookId: "local-test",
-    seedBase: "local-test"
+    seedBase: "local-test",
+    includeDataUrl: false
   });
 
   if (!result.anchorImage?.url || result.sceneImages.length < 3) {

@@ -20,6 +20,10 @@ services:
       - PROVIDER_TEXT=${PROVIDER_TEXT:-gemini}
       - PROVIDER_IMAGE=${PROVIDER_IMAGE:-gemini}
       
+      # Gemini API configuration (for text generation)
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_TEXT_MODEL=${GEMINI_TEXT_MODEL:-gemini-2.5-flash}
+
       # Comfy Cloud configuration
       - COMFY_CLOUD_API_KEY=${COMFY_CLOUD_API_KEY:-}
       - COMFY_CLOUD_BASE_URL=${COMFY_CLOUD_BASE_URL:-https://cloud.comfy.org}
