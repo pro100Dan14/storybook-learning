@@ -1,10 +1,10 @@
 /**
  * Comfy workflow builder for ByteDance Seedream (Comfy Cloud)
  *
- * Requirements (per Comfy API behavior):
- * - Prompts are swapped between anchor and scenes nodes
- * - Prompt #2 = BASE_PREFIX + renderScenes(scenes) + BASE_SUFFIX
- * - Prompt #1 (template anchor prompt) is applied to scenes node
+ * Requirements:
+ * - Prompt #1 (anchor) remains unchanged from template
+ * - Prompt #2 base is taken from template (scenes node)
+ * - Prompt #2 final = templateBase + renderScenes(scenes)
  */
 
 import fs from "fs";
@@ -17,16 +17,7 @@ const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, "../../");
 const WORKFLOW_TEMPLATE_PATH = path.join(REPO_ROOT, "api_bytedance_seedream4.json");
 
-// Prompt #2 base (identity lock / style / forbiddens) - MUST stay constant
-export const PROMPT2_BASE_PREFIX = `IDENTITY LOCK: Use the child face from image0 exactly. Do not change facial features. No beautification, no stylization of the face. Do not change anythin, just place the entire face. Keep the same head shape, eyes, nose, lips, cheeks, skin tone, hairstyle — match image0 as closely as possible. The face must be identical to image0.
-Draw the body, hands, clothes and background in a friendly children’s cartoon painting style (simplified shapes, soft painterly background).
-Same outfit in every image: light blue hoodie, dark navy jeans, white sneakers. No text.
-AVOID: wrong identity, different face, anime/chibi, generic baby face, big eyes, blur, distortion, deformed hands, extra fingers, text, watermark, logo, signature, collage, cutout.
-
-SCENES:
-`;
-
-export const PROMPT2_BASE_SUFFIX = ``;
+// Prompt #2 base comes from template (scenes node). We append scenes to it.
 
 let cachedTemplate = null;
 let cachedHash = null;
@@ -191,14 +182,15 @@ export function buildWorkflow({
   }
 
   const scenesCount = normalizedScenes.length;
-  const prompt2 = `${PROMPT2_BASE_PREFIX}${renderScenes(normalizedScenes)}${PROMPT2_BASE_SUFFIX}`;
+  const prompt2Base = scenesNode?.inputs?.prompt || "";
+  if (!prompt2Base) {
+    throw new Error("SCENES_PROMPT_BASE_MISSING");
+  }
+  const prompt2 = `${prompt2Base.trimEnd()}\n\n${renderScenes(normalizedScenes)}`;
 
-  // Swap prompts between nodes:
-  // - Anchor node gets Prompt #2 (BASE + SCENES)
-  // - Scenes node gets Prompt #1 from template
-  const templatePrompt1 = anchorNode?.inputs?.prompt || "";
-  anchorNode.inputs.prompt = prompt2;
-  scenesNode.inputs.prompt = templatePrompt1;
+  // Prompt #1 (anchor) remains unchanged
+  // Prompt #2 (scenes) is template base + scenes text
+  scenesNode.inputs.prompt = prompt2;
   scenesNode.inputs.max_images = scenesCount;
 
   const seeds = seedsOverride || computeSeeds({ seedBase, bookId });

@@ -44,7 +44,8 @@ export async function uploadImage(buffer, filename, mimeType = "image/jpeg") {
 
   const form = new FormData();
   const blob = new Blob([buffer], { type: mimeType });
-  form.append("image", blob, filename || "upload.jpg");
+  // ComfyUI API expects "file" field
+  form.append("file", blob, filename || "upload.jpg");
 
   const res = await fetchFn(`${BASE_URL}/api/upload/image`, {
     method: "POST",

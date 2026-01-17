@@ -677,17 +677,36 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
   const startTime = Date.now();
 
   try {
-    if (!req.file) {
+    let photoBuffer = null;
+    let photoMimeType = null;
+    let photoFilename = null;
+
+    if (req.file) {
+      photoBuffer = req.file.buffer;
+      photoMimeType = req.file.mimetype;
+      photoFilename = req.file.originalname;
+    } else {
+      // Fallback: accept base64 in JSON/multipart fields
+      const rawPhotoBase64 = req.body?.photoBase64 || req.body?.imageBase64 || "";
+      const finalPhotoBase64 = stripDataUrlPrefix(rawPhotoBase64);
+      if (finalPhotoBase64 && finalPhotoBase64.length > 10) {
+        photoBuffer = decodeBase64ToBuffer(finalPhotoBase64);
+        photoMimeType = req.body?.photoMimeType || req.body?.mimeType || "image/jpeg";
+        photoFilename = req.body?.photoFilename || "photo.jpg";
+      }
+    }
+
+    if (!photoBuffer) {
       return res.status(400).json({
         ok: false,
         error: "PHOTO_REQUIRED",
-        message: "Photo is required (multipart/form-data field: photo)",
+        message: "Photo is required (multipart/form-data field: photo or photoBase64).",
         requestId
       });
     }
 
     // Validate mime type and buffer
-    if (req.file.mimetype && !ALLOWED_PHOTO_MIME_TYPES.has(req.file.mimetype)) {
+    if (photoMimeType && !ALLOWED_PHOTO_MIME_TYPES.has(photoMimeType)) {
       return res.status(400).json({
         ok: false,
         error: "PHOTO_REQUIRED",
@@ -695,7 +714,7 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
         requestId
       });
     }
-    if (!isValidImageBufferForMime(req.file.buffer, req.file.mimetype)) {
+    if (!isValidImageBufferForMime(photoBuffer, photoMimeType)) {
       return res.status(400).json({
         ok: false,
         error: "PHOTO_REQUIRED",
@@ -730,9 +749,9 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
     const seedBase = req.body?.seedBase || req.body?.seed || null;
 
     const result = await generateComfyImages({
-      photoBuffer: req.file.buffer,
-      photoFilename: req.file.originalname,
-      photoMimeType: req.file.mimetype,
+      photoBuffer,
+      photoFilename,
+      photoMimeType,
       scenes,
       seedBase,
       bookId,
