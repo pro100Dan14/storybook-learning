@@ -9,9 +9,10 @@ import { extractJSONFromText } from "../utils/validation.mjs";
 
 const DEFAULT_SCENE_COUNT = 3;
 
-function buildScenesPrompt({ name, theme, count }) {
+function buildScenesPrompt({ name, theme, count, scenarioText }) {
   const safeName = name ? `Имя героя: ${name}.` : "";
   const safeTheme = theme ? `Тема: ${theme}.` : "";
+  const safeScenario = scenarioText ? `Сценарий от клиента:\n${scenarioText}` : "";
 
   return `
 Сгенерируй ${count} коротких описаний сцен для детской книги на русском.
@@ -28,16 +29,18 @@ function buildScenesPrompt({ name, theme, count }) {
 
 ${safeName}
 ${safeTheme}
+${safeScenario}
 `.trim();
 }
 
 export async function generateScenesFromGemini({
   name,
   theme,
+  scenarioText,
   count = DEFAULT_SCENE_COUNT,
   requestId
 }) {
-  const prompt = buildScenesPrompt({ name, theme, count });
+  const prompt = buildScenesPrompt({ name, theme, count, scenarioText });
 
   const result = await generateTextUnified({
     prompt,

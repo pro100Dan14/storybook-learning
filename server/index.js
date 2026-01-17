@@ -732,18 +732,18 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
 
     let scenes = normalizeScenes(scenesInput);
     let scenesText = null;
+    const scenarioText = scenes.length > 0 ? scenes.map((s, i) => `Scene${i + 1}: ${s}`).join("\n") : "";
 
-    if (!scenes || scenes.length === 0) {
-      // Generate scenes via Gemini if not provided by client
-      const generated = await generateScenesFromGemini({
-        name: req.body?.name || "",
-        theme: req.body?.theme || "",
-        count: Number(req.body?.sceneCount || 3),
-        requestId
-      });
-      scenes = generated.scenes;
-      scenesText = generated.scenesText;
-    }
+    // Always generate final scene descriptions via Gemini (based on scenario)
+    const generated = await generateScenesFromGemini({
+      name: req.body?.name || "",
+      theme: req.body?.theme || "",
+      scenarioText,
+      count: Number(req.body?.sceneCount || 3),
+      requestId
+    });
+    scenes = generated.scenes;
+    scenesText = generated.scenesText;
 
     const bookId = req.body?.bookId || req.body?.jobId || null;
     const seedBase = req.body?.seedBase || req.body?.seed || null;

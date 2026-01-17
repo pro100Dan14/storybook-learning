@@ -15,7 +15,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, "../../");
-const WORKFLOW_TEMPLATE_PATH = path.join(REPO_ROOT, "api_bytedance_seedream4.json");
+const WORKFLOW_TEMPLATE_PATH = path.join(REPO_ROOT, "api_bytedance_seedream4");
+const WORKFLOW_TEMPLATE_FALLBACK = path.join(REPO_ROOT, "api_bytedance_seedream4.json");
 
 // Prompt #2 base comes from template (scenes node). We append scenes to it.
 
@@ -28,10 +29,13 @@ function sha256(text) {
 
 export function getWorkflowTemplate() {
   if (!cachedTemplate) {
-    if (!fs.existsSync(WORKFLOW_TEMPLATE_PATH)) {
+    const templatePath = fs.existsSync(WORKFLOW_TEMPLATE_PATH)
+      ? WORKFLOW_TEMPLATE_PATH
+      : WORKFLOW_TEMPLATE_FALLBACK;
+    if (!fs.existsSync(templatePath)) {
       throw new Error(`WORKFLOW_TEMPLATE_NOT_FOUND: ${WORKFLOW_TEMPLATE_PATH}`);
     }
-    const raw = fs.readFileSync(WORKFLOW_TEMPLATE_PATH, "utf8");
+    const raw = fs.readFileSync(templatePath, "utf8");
     cachedTemplate = JSON.parse(raw);
     cachedHash = sha256(raw);
   }
