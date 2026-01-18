@@ -34,6 +34,9 @@ RUN npm install --only=production --legacy-peer-deps && npm cache clean --force
 # Copy application code (excluding node_modules and package files already copied)
 COPY server/ ./
 
+# Copy Seedream workflow template(s) from repo root
+COPY api_bytedance_seedream4* ./
+
 # Copy tools directory (needed for face_id.py)
 # REPO_ROOT in face-id/index.mjs resolves to /app, so tools should be at /app/tools/
 COPY tools/ ./tools/
