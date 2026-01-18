@@ -93,6 +93,29 @@ router.get("/:bookId/hero.jpg", (req, res) => {
 });
 
 /**
+ * GET /jobs/:bookId/input.jpg
+ * Serve input image (for external model fetch)
+ */
+router.get("/:bookId/input.jpg", (req, res) => {
+  const { bookId } = req.params;
+
+  if (!validateBookId(bookId)) {
+    return res.status(400).json({ error: "INVALID_BOOK_ID", message: "bookId must be a valid UUID" });
+  }
+
+  const filePath = path.join(serverDir, "jobs", bookId, "input.jpg");
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Input image not found" });
+  }
+
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.sendFile(filePath);
+});
+
+/**
  * GET /jobs/:bookId/page_:pageNum.png
  * Serve page illustration for Lovable carousel
  */

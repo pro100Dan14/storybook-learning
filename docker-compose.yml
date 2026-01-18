@@ -24,9 +24,12 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_TEXT_MODEL=${GEMINI_TEXT_MODEL:-gemini-2.5-flash}
 
-      # Comfy Cloud configuration
-      - COMFY_CLOUD_API_KEY=${COMFY_CLOUD_API_KEY:-}
-      - COMFY_CLOUD_BASE_URL=${COMFY_CLOUD_BASE_URL:-https://cloud.comfy.org}
+      # BytePlus Seedream configuration
+      - BYTEPLUS_API_KEY=${BYTEPLUS_API_KEY:-}
+      - BYTEPLUS_BASE_URL=${BYTEPLUS_BASE_URL:-https://ark.ap-southeast.bytepluses.com}
+      - BYTEPLUS_MODEL=${BYTEPLUS_MODEL:-}
+      - BYTEPLUS_SIZE=${BYTEPLUS_SIZE:-2048x2048}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://api.projectt988.com}
       
       # Google Cloud credentials (if using ADC instead of API key)
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/app/gcp-sa.json}

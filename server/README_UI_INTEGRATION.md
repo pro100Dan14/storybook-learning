@@ -56,7 +56,7 @@ Response: {
 ```
 Used by UI for connection diagnostics. Returns no secrets.
 
-### Image Generation (Comfy Cloud)
+### Image Generation (BytePlus Seedream)
 ```
 POST /api/generate-images
 Content-Type: multipart/form-data
@@ -70,10 +70,10 @@ Response: {
   jobId: string,
   anchorImage: { url, filename },
   sceneImages: [{ url, filename }, ...],
-  metadata: { seeds, workflowVersionHash }
+  metadata: { workflowVersionHash, model, size }
 }
 ```
-Generates 1 anchor face image + N scene images using Comfy Cloud workflow.
+Generates 1 anchor face image + N scene images using BytePlus Seedream model.
 
 ### Storybook Generation (Legacy)
 ```

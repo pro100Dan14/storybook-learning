@@ -57,11 +57,16 @@ if ((providerText === "gemini" || providerImage === "gemini") && (!geminiApiKey 
   process.exit(1);
 }
 
-const comfyApiKey = process.env.COMFY_CLOUD_API_KEY;
-if (!comfyApiKey || comfyApiKey.trim() === "") {
-  console.error("FATAL: COMFY_CLOUD_API_KEY missing");
-  console.error("Set COMFY_CLOUD_API_KEY in server/.env or environment");
+const byteplusApiKey = process.env.BYTEPLUS_API_KEY;
+if (!byteplusApiKey || byteplusApiKey.trim() === "") {
+  console.error("FATAL: BYTEPLUS_API_KEY missing");
+  console.error("Set BYTEPLUS_API_KEY in server/.env or environment");
   process.exit(1);
+}
+
+const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://api.projectt988.com";
+if (!process.env.PUBLIC_BASE_URL || process.env.PUBLIC_BASE_URL.trim() === "") {
+  console.warn("WARN: PUBLIC_BASE_URL not set; using default https://api.projectt988.com");
 }
 
 import express from "express";
@@ -73,9 +78,9 @@ import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import { generateTextUnified } from "./services/gen-text.mjs";
 import { generateImageUnified } from "./services/gen-image.mjs";
-import { generateComfyImages } from "./services/comfy-generation.mjs";
-import { normalizeScenes } from "./services/comfy-workflow.mjs";
+import { normalizeScenes } from "./services/scene-utils.mjs";
 import { generateScenesFromGemini } from "./services/scene-generator.mjs";
+import { generateSeedreamBookImages } from "./services/seedream-generation.mjs";
 import { generateHeroReference } from "./services/hero-generation.mjs";
 import { decodeBase64ToBuffer } from "./utils/base64-decode.mjs";
 import { getGeminiAccessToken } from "./utils/gemini-auth.mjs";
@@ -749,19 +754,17 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
 
     const bookId = req.body?.bookId || req.body?.jobId || null;
     const seedBase = req.body?.seedBase || req.body?.seed || null;
-
-    const result = await generateComfyImages({
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const jobId = bookId && uuidPattern.test(bookId) ? bookId : randomUUID();
+    const result = await generateSeedreamBookImages({
       photoBuffer,
-      photoFilename,
-      photoMimeType,
       scenes,
-      seedBase,
-      bookId,
+      bookId: jobId,
       includeDataUrl: true
     });
 
     const totalTime = Date.now() - startTime;
-    console.log(`[${requestId}] COMFY: job=${result.jobId} scenes=${result.sceneImages.length} (${totalTime}ms)`);
+    console.log(`[${requestId}] SEEDREAM: job=${result.jobId} scenes=${result.sceneImages.length} (${totalTime}ms)`);
 
     return res.json({
       ok: true,
@@ -2344,4 +2347,5 @@ app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Using PROVIDER_TEXT=${providerText} model=${geminiTextModel}`);
   console.log(`Using PROVIDER_IMAGE=${providerImage} model=${geminiImageModel}`);
+  console.log(`Using BYTEPLUS_MODEL=${process.env.BYTEPLUS_MODEL || "from template"} base=${process.env.BYTEPLUS_BASE_URL || "default"}`);
 });

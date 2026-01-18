@@ -4,7 +4,7 @@
  */
 
 import { generateTextUnified } from "./gen-text.mjs";
-import { normalizeScenes } from "./comfy-workflow.mjs";
+import { normalizeScenes } from "./scene-utils.mjs";
 import { extractJSONFromText } from "../utils/validation.mjs";
 
 const DEFAULT_SCENE_COUNT = 3;

@@ -75,10 +75,13 @@ nano .env
 ### Вставьте в файл (замените `your_comfy_cloud_api_key_here` на ваш ключ):
 
 ```
-COMFY_CLOUD_API_KEY=your_comfy_cloud_api_key_here
-COMFY_CLOUD_BASE_URL=https://cloud.comfy.org
+BYTEPLUS_API_KEY=your_byteplus_api_key_here
+BYTEPLUS_BASE_URL=https://ark.ap-southeast.bytepluses.com
+BYTEPLUS_MODEL=seedream-4-5-251128
+BYTEPLUS_SIZE=2048x2048
+PUBLIC_BASE_URL=https://api.projectt988.com
 
-# Gemini (нужно для генерации сцен)
+# Gemini (нужно для генерации текста/сцен)
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_TEXT_MODEL=gemini-2.5-flash
 PROVIDER_TEXT=gemini
