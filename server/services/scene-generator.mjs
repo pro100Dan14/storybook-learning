@@ -1,6 +1,6 @@
 /**
  * Scene generator using Gemini text model
- * Returns scenes array and raw text for UI
+ * Returns storyText + scenes array and raw text for UI
  */
 
 import { generateTextUnified } from "./gen-text.mjs";
@@ -15,11 +15,18 @@ function buildScenesPrompt({ name, theme, count, scenarioText }) {
   const safeScenario = scenarioText ? `Сценарий от клиента:\n${scenarioText}` : "";
 
   return `
-Сгенерируй ${count} коротких описаний сцен для детской книги на русском.
+Сгенерируй текст для детской книги и описания иллюстраций.
 Формат ответа: строго JSON.
 
+Обязательные поля:
+- storyText: связный текст из ${count} абзацев (по одному на сцену)
+- scenes: массив из ${count} коротких описаний сцен
+
 Пример:
-{"scenes":["Scene1: ...","Scene2: ...","Scene3: ..."]}
+{
+  "storyText": "Абзац 1...\n\nАбзац 2...\n\nАбзац 3...",
+  "scenes": ["Scene1: ...","Scene2: ...","Scene3: ..."]
+}
 
 Требования:
 - Без опасности и пугающих событий
@@ -50,10 +57,14 @@ export async function generateScenesFromGemini({
 
   const rawText = result?.text || "";
   let scenes = [];
+  let storyText = "";
 
   const parsed = extractJSONFromText(rawText);
   if (parsed && Array.isArray(parsed.scenes)) {
     scenes = parsed.scenes.map((s) => String(s).trim()).filter(Boolean);
+    if (typeof parsed.storyText === "string") {
+      storyText = parsed.storyText.trim();
+    }
   } else {
     scenes = normalizeScenes(rawText);
   }
@@ -67,9 +78,14 @@ export async function generateScenesFromGemini({
     throw new Error("SCENE_GENERATION_FAILED");
   }
 
+  if (!storyText) {
+    storyText = rawText;
+  }
+
   return {
     scenes: scenes.slice(0, count),
-    scenesText: rawText
+    scenesText: rawText,
+    storyText
   };
 }
 

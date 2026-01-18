@@ -732,6 +732,7 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
 
     let scenes = normalizeScenes(scenesInput);
     let scenesText = null;
+    let storyText = null;
     const scenarioText = scenes.length > 0 ? scenes.map((s, i) => `Scene${i + 1}: ${s}`).join("\n") : "";
 
     // Always generate final scene descriptions via Gemini (based on scenario)
@@ -744,6 +745,7 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
     });
     scenes = generated.scenes;
     scenesText = generated.scenesText;
+    storyText = generated.storyText;
 
     const bookId = req.body?.bookId || req.body?.jobId || null;
     const seedBase = req.body?.seedBase || req.body?.seed || null;
@@ -766,7 +768,8 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
       requestId,
       ...result,
       scenes,
-      scenesText
+      scenesText,
+      storyText
     });
   } catch (e) {
     console.error(`[${requestId}] COMFY error:`, e?.message || e);

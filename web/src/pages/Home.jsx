@@ -1,15 +1,14 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import './Home.css'
 
 function Home() {
-  const navigate = useNavigate()
   const [name, setName] = useState('Герой')
   const [theme, setTheme] = useState('волшебный лес')
-  const [pages, setPages] = useState(8)
+  const [pages, setPages] = useState(3)
   const [photo, setPhoto] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
@@ -48,6 +47,7 @@ function Home() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    setResult(null)
 
     if (!photo) {
       setError('Please select a photo')
@@ -57,20 +57,15 @@ function Home() {
     setLoading(true)
 
     try {
-      const photoBase64 = stripDataUrlPrefix(photo.base64)
-      
-      const response = await fetch('/api/book', {
+      const formData = new FormData()
+      formData.append('photo', photo.file)
+      formData.append('name', name.trim() || 'Герой')
+      formData.append('theme', theme.trim() || 'волшебный лес')
+      formData.append('sceneCount', String(Number(pages) || 3))
+
+      const response = await fetch('/api/generate-images', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: name.trim() || 'Герой',
-          theme: theme.trim() || 'волшебный лес',
-          pages: Number(pages) || 8,
-          photoBase64,
-          photoMimeType: photo.mimeType,
-        }),
+        body: formData,
       })
 
       const rawText = await response.text()
@@ -87,10 +82,10 @@ function Home() {
         throw new Error(data.message || data.error || `HTTP ${response.status}`)
       }
 
-      if (data.bookId) {
-        navigate(`/book/${data.bookId}`)
+      if (data.ok) {
+        setResult(data)
       } else {
-        throw new Error('Book generated but bookId missing in response')
+        throw new Error(data.message || data.error || 'Generation failed')
       }
     } catch (err) {
       setError(err.message || 'Failed to generate book')
@@ -132,12 +127,12 @@ function Home() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="pages">Number of Pages</label>
+            <label htmlFor="pages">Number of Scenes</label>
             <input
               id="pages"
               type="number"
               min="1"
-              max="12"
+              max="6"
               value={pages}
               onChange={(e) => setPages(e.target.value)}
               disabled={loading}
@@ -171,6 +166,34 @@ function Home() {
             {loading ? 'Generating...' : 'Generate Book'}
           </button>
         </form>
+
+        {result && (
+          <div className="result-container">
+            <h2>Generated Story</h2>
+            {result.storyText && (
+              <pre className="story-text">{result.storyText}</pre>
+            )}
+            <h2>Illustrations</h2>
+            <div className="photo-preview">
+              {result.anchorImage?.dataUrl && (
+                <div>
+                  <span>Anchor</span>
+                  <img src={result.anchorImage.dataUrl} alt="Anchor" />
+                </div>
+              )}
+              {Array.isArray(result.sceneImages) && result.sceneImages.map((img, idx) => (
+                <div key={img.filename || idx}>
+                  <span>Scene {idx + 1}</span>
+                  {img.dataUrl ? (
+                    <img src={img.dataUrl} alt={`Scene ${idx + 1}`} />
+                  ) : (
+                    <a href={img.url} target="_blank" rel="noreferrer">Open</a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
