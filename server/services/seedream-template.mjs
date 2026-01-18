@@ -10,13 +10,40 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const REPO_ROOT = path.resolve(__dirname, "../../");
-
-const TEMPLATE_PATH = path.join(REPO_ROOT, "api_bytedance_seedream4");
-const TEMPLATE_FALLBACK = path.join(REPO_ROOT, "api_bytedance_seedream4.json");
 
 let cachedTemplate = null;
 let cachedHash = null;
+let cachedTemplatePath = null;
+
+// Try multiple possible locations for the template file
+// 1. In Docker: /app/api_bytedance_seedream4.json (working directory is /app)
+// 2. In local dev: repo_root/api_bytedance_seedream4.json
+// 3. Relative to current file: ../../api_bytedance_seedream4.json
+function findTemplatePath() {
+  // If we already found it, return cached path
+  if (cachedTemplatePath && fs.existsSync(cachedTemplatePath)) {
+    return cachedTemplatePath;
+  }
+  
+  const candidates = [
+    // Docker container: file is in working directory
+    path.join(process.cwd(), "api_bytedance_seedream4.json"),
+    // Local dev: relative to server/services
+    path.resolve(__dirname, "../../api_bytedance_seedream4.json"),
+    // Alternative: directory instead of file
+    path.join(process.cwd(), "api_bytedance_seedream4"),
+    path.resolve(__dirname, "../../api_bytedance_seedream4"),
+  ];
+  
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      cachedTemplatePath = candidate;
+      return candidate;
+    }
+  }
+  
+  return null;
+}
 
 function sha256(text) {
   return createHash("sha256").update(text).digest("hex");
@@ -34,11 +61,15 @@ function findNodesByClassType(workflow, classType) {
 
 export function getSeedreamTemplate() {
   if (!cachedTemplate) {
-    const templatePath = fs.existsSync(TEMPLATE_PATH)
-      ? TEMPLATE_PATH
-      : TEMPLATE_FALLBACK;
-    if (!fs.existsSync(templatePath)) {
-      throw new Error("SEEDREAM_TEMPLATE_NOT_FOUND");
+    const templatePath = findTemplatePath();
+    if (!templatePath) {
+      const candidates = [
+        path.join(process.cwd(), "api_bytedance_seedream4.json"),
+        path.resolve(__dirname, "../../api_bytedance_seedream4.json"),
+        path.join(process.cwd(), "api_bytedance_seedream4"),
+        path.resolve(__dirname, "../../api_bytedance_seedream4"),
+      ];
+      throw new Error(`SEEDREAM_TEMPLATE_NOT_FOUND: Template file not found. Tried: ${candidates.join(", ")}. Current working directory: ${process.cwd()}, __dirname: ${__dirname}`);
     }
     const raw = fs.readFileSync(templatePath, "utf8");
     cachedTemplate = JSON.parse(raw);
