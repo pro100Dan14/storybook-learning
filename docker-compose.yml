@@ -30,6 +30,7 @@ services:
       - BYTEPLUS_MODEL=${BYTEPLUS_MODEL:-}
       - BYTEPLUS_SIZE=${BYTEPLUS_SIZE:-2048x2048}
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://api.projectt988.com}
+      - DISABLE_LEGACY_IMAGE=${DISABLE_LEGACY_IMAGE:-true}
       
       # Google Cloud credentials (if using ADC instead of API key)
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/app/gcp-sa.json}

@@ -80,6 +80,7 @@ BYTEPLUS_BASE_URL=https://ark.ap-southeast.bytepluses.com
 BYTEPLUS_MODEL=seedream-4-5-251128
 BYTEPLUS_SIZE=2048x2048
 PUBLIC_BASE_URL=https://api.projectt988.com
+DISABLE_LEGACY_IMAGE=true
 
 # Gemini (нужно для генерации текста/сцен)
 GEMINI_API_KEY=your_gemini_api_key_here

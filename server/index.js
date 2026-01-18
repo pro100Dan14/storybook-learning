@@ -69,6 +69,9 @@ if (!process.env.PUBLIC_BASE_URL || process.env.PUBLIC_BASE_URL.trim() === "") {
   console.warn("WARN: PUBLIC_BASE_URL not set; using default https://api.projectt988.com");
 }
 
+// Disable legacy image generation endpoints by default
+const DISABLE_LEGACY_IMAGE = process.env.DISABLE_LEGACY_IMAGE !== "false";
+
 import express from "express";
 import cors from "cors";
 import multer from "multer";
@@ -545,6 +548,14 @@ app.post("/api/image", async (req, res) => {
   const startTime = Date.now();
   
   try {
+    if (DISABLE_LEGACY_IMAGE) {
+      return res.status(410).json({
+        ok: false,
+        error: "LEGACY_IMAGE_DISABLED",
+        message: "Legacy image endpoint disabled. Use /api/generate-images (Seedream).",
+        requestId
+      });
+    }
     const body = req.body || {};
 
     const pageText = body.pageText || "";
@@ -839,6 +850,15 @@ app.post("/api/book", handleBookUpload, async (req, res) => {
   const requestId = req.requestId;
   const startTime = Date.now();
   
+  if (DISABLE_LEGACY_IMAGE) {
+    return res.status(410).json({
+      ok: false,
+      error: "LEGACY_BOOK_DISABLED",
+      message: "Legacy book pipeline disabled. Use /api/generate-images (Seedream).",
+      requestId
+    });
+  }
+
   // A) Generate unique book_id and create per-book directory (before try for catch access)
   const bookId = randomUUID();
   const jobsDir = path.join(__dirname, "jobs");
