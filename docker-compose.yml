@@ -27,8 +27,8 @@ services:
       # BytePlus Seedream configuration
       - BYTEPLUS_API_KEY=${BYTEPLUS_API_KEY:-}
       - BYTEPLUS_BASE_URL=${BYTEPLUS_BASE_URL:-https://ark.ap-southeast.bytepluses.com}
-      - BYTEPLUS_MODEL=${BYTEPLUS_MODEL:-seedream-4-0-250828}
-      - BYTEPLUS_SIZE=${BYTEPLUS_SIZE:-1024x1024}
+      - BYTEPLUS_MODEL=${BYTEPLUS_MODEL:-seedream-4-5-251128}
+      - BYTEPLUS_SIZE=${BYTEPLUS_SIZE:-2048x2048}
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://api.projectt988.com}
       - DISABLE_LEGACY_IMAGE=${DISABLE_LEGACY_IMAGE:-true}
       

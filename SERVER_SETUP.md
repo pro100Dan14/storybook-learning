@@ -77,8 +77,8 @@ nano .env
 ```
 BYTEPLUS_API_KEY=your_byteplus_api_key_here
 BYTEPLUS_BASE_URL=https://ark.ap-southeast.bytepluses.com
-BYTEPLUS_MODEL=seedream-4-0-250828
-BYTEPLUS_SIZE=1024x1024
+BYTEPLUS_MODEL=seedream-4-5-251128
+BYTEPLUS_SIZE=2048x2048
 PUBLIC_BASE_URL=https://api.projectt988.com
 DISABLE_LEGACY_IMAGE=true
 
