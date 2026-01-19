@@ -789,8 +789,9 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
     );
     const sceneCountSafe = Number.isFinite(sceneCountRaw) ? sceneCountRaw : 3;
     const sceneCount = Math.max(1, Math.min(6, sceneCountSafe));
-    const includeDataUrl = parseBoolean(req.body?.includeDataUrl, true);
+    const includeDataUrl = parseBoolean(req.body?.includeDataUrl, false);
     const publicBaseUrl = resolvePublicBaseUrl(req);
+    const allowLocalPublicBaseUrl = parseBoolean(process.env.ALLOW_LOCAL_PUBLIC_BASE_URL, false);
 
     if (!publicBaseUrl) {
       return res.status(500).json({
@@ -800,8 +801,13 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
         requestId
       });
     }
-    if (isLikelyLocalUrl(publicBaseUrl)) {
-      console.warn(`[${requestId}] SEEDREAM: PUBLIC_BASE_URL looks local (${publicBaseUrl}). BytePlus cannot access localhost.`);
+    if (!allowLocalPublicBaseUrl && isLikelyLocalUrl(publicBaseUrl)) {
+      return res.status(400).json({
+        ok: false,
+        error: "PUBLIC_BASE_URL_INVALID",
+        message: "PUBLIC_BASE_URL must be a публичный HTTPS домен (не localhost). BytePlus не может скачать input.jpg с локального адреса.",
+        requestId
+      });
     }
 
     const generated = await generateScenesFromGemini({
