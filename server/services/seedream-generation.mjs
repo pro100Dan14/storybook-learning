@@ -133,7 +133,7 @@ export async function generateSeedreamBookImages({
     throw new Error("BYTEPLUS_MODEL_MISSING");
   }
 
-  const finalSize = DEFAULT_SIZE || size || "2048x2048";
+  const finalSize = DEFAULT_SIZE || size || "1024x1024";
   const resolvedBaseUrl = resolvePublicBaseUrl(publicBaseUrl);
   const shouldIncludeDataUrl = includeDataUrl === true;
 

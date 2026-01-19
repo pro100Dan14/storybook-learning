@@ -28,7 +28,7 @@ services:
       - BYTEPLUS_API_KEY=${BYTEPLUS_API_KEY:-}
       - BYTEPLUS_BASE_URL=${BYTEPLUS_BASE_URL:-https://ark.ap-southeast.bytepluses.com}
       - BYTEPLUS_MODEL=${BYTEPLUS_MODEL:-}
-      - BYTEPLUS_SIZE=${BYTEPLUS_SIZE:-2048x2048}
+      - BYTEPLUS_SIZE=${BYTEPLUS_SIZE:-1024x1024}
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://api.projectt988.com}
       - DISABLE_LEGACY_IMAGE=${DISABLE_LEGACY_IMAGE:-true}
       
