@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { buildApiUrl } from '../utils/api'
 import './Home.css'
 
@@ -10,6 +10,7 @@ function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
+  const pollAbortRef = useRef({ cancelled: false })
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
@@ -52,6 +53,8 @@ function Home() {
     setLoading(true)
 
     try {
+      pollAbortRef.current.cancelled = true
+      pollAbortRef.current = { cancelled: false }
       const formData = new FormData()
       formData.append('photo', photo.file)
       formData.append('name', name.trim() || 'Герой')
@@ -59,6 +62,7 @@ function Home() {
       formData.append('sceneCount', String(Number(pages) || 3))
 
       formData.append('includeDataUrl', 'false')
+      formData.append('async', 'true')
 
       const response = await fetch(buildApiUrl('/api/generate-images'), {
         method: 'POST',
@@ -79,10 +83,23 @@ function Home() {
         throw new Error(data.message || data.error || `HTTP ${response.status}`)
       }
 
-      if (data.ok) {
-        setResult(data)
-      } else {
+      if (!data.ok) {
         throw new Error(data.message || data.error || 'Generation failed')
+      }
+
+      if (data.status === 'processing' && data.statusUrl) {
+        const finalData = await pollSeedreamStatus(
+          data.statusUrl,
+          pollAbortRef,
+          5000,
+          6 * 60 * 1000
+        )
+        if (!finalData.ok) {
+          throw new Error(finalData.message || finalData.error || 'Generation failed')
+        }
+        setResult(finalData)
+      } else {
+        setResult(data)
       }
     } catch (err) {
       setError(err.message || 'Failed to generate book')
@@ -91,6 +108,12 @@ function Home() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    return () => {
+      pollAbortRef.current.cancelled = true
+    }
+  }, [])
 
   return (
     <div className="home-container">
@@ -200,6 +223,39 @@ function Home() {
       </div>
     </div>
   )
+}
+
+async function pollSeedreamStatus(statusUrl, abortRef, intervalMs, timeoutMs) {
+  const start = Date.now()
+
+  while (true) {
+    if (abortRef?.current?.cancelled) {
+      throw new Error('Generation cancelled')
+    }
+
+    const response = await fetch(buildApiUrl(statusUrl))
+    const rawText = await response.text()
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      throw new Error(`Invalid JSON response (${response.status})`)
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || `HTTP ${response.status}`)
+    }
+
+    if (data.status === 'processing') {
+      if (Date.now() - start > timeoutMs) {
+        throw new Error('Generation is taking too long. Please try again.')
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs))
+      continue
+    }
+
+    return data
+  }
 }
 
 export default Home

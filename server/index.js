@@ -288,6 +288,24 @@ function parseBoolean(value, defaultValue = true) {
   return defaultValue;
 }
 
+function ensureJobDir(rootDir, jobId) {
+  const jobsDir = path.join(rootDir, "jobs");
+  const jobDir = path.join(jobsDir, jobId);
+  if (!fs.existsSync(jobsDir)) {
+    fs.mkdirSync(jobsDir, { recursive: true });
+  }
+  if (!fs.existsSync(jobDir)) {
+    fs.mkdirSync(jobDir, { recursive: true });
+  }
+  return jobDir;
+}
+
+function writeSeedreamStatus(jobDir, payload) {
+  const filePath = path.join(jobDir, "seedream.json");
+  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+  return filePath;
+}
+
 // Middleware: Add requestId to every request (must be after generateRequestId)
 app.use((req, res, next) => {
   req.requestId = generateRequestId();
@@ -777,11 +795,6 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
       req.body?.scenesJson ||
       "";
 
-    let scenes = normalizeScenes(scenesInput);
-    let scenesText = null;
-    let storyText = null;
-    const scenarioText = scenes.length > 0 ? scenes.map((s, i) => `Scene${i + 1}: ${s}`).join("\n") : "";
-
     // Always generate final scene descriptions via Gemini (based on scenario)
     const sceneCountRaw = Number.parseInt(
       String(req.body?.sceneCount ?? req.body?.pages ?? ""),
@@ -810,39 +823,97 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
       });
     }
 
-    const generated = await generateScenesFromGemini({
-      name: req.body?.name || "",
-      theme: req.body?.theme || "",
-      scenarioText,
-      count: sceneCount,
-      requestId
-    });
-    scenes = generated.scenes;
-    scenesText = generated.scenesText;
-    storyText = generated.storyText;
-
     const bookId = req.body?.bookId || req.body?.jobId || null;
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const jobId = bookId && uuidPattern.test(bookId) ? bookId : randomUUID();
-    const result = await generateSeedreamBookImages({
-      photoBuffer,
-      scenes,
-      bookId: jobId,
-      includeDataUrl,
-      publicBaseUrl,
-      requestId
-    });
+    const asyncMode = parseBoolean(
+      req.body?.async ?? req.query?.async ?? req.headers["x-async"],
+      parseBoolean(process.env.SEEDREAM_ASYNC_DEFAULT, false)
+    );
+
+    const runSeedreamGeneration = async () => {
+      let scenes = normalizeScenes(scenesInput);
+      let scenesText = null;
+      let storyText = null;
+      const scenarioText = scenes.length > 0 ? scenes.map((s, i) => `Scene${i + 1}: ${s}`).join("\n") : "";
+
+      const generated = await generateScenesFromGemini({
+        name: req.body?.name || "",
+        theme: req.body?.theme || "",
+        scenarioText,
+        count: sceneCount,
+        requestId
+      });
+      scenes = generated.scenes;
+      scenesText = generated.scenesText;
+      storyText = generated.storyText;
+
+      const result = await generateSeedreamBookImages({
+        photoBuffer,
+        scenes,
+        bookId: jobId,
+        includeDataUrl,
+        publicBaseUrl,
+        requestId
+      });
+
+      return {
+        ok: true,
+        requestId,
+        ...result,
+        scenes,
+        scenesText,
+        storyText
+      };
+    };
+
+    if (asyncMode) {
+      const jobDir = ensureJobDir(__dirname, jobId);
+      writeSeedreamStatus(jobDir, {
+        ok: false,
+        status: "processing",
+        jobId,
+        requestId,
+        createdAt: new Date().toISOString()
+      });
+
+      setImmediate(async () => {
+        try {
+          const completed = await runSeedreamGeneration();
+          writeSeedreamStatus(jobDir, {
+            ...completed,
+            status: "completed",
+            completedAt: new Date().toISOString()
+          });
+        } catch (error) {
+          writeSeedreamStatus(jobDir, {
+            ok: false,
+            status: "failed",
+            jobId,
+            requestId,
+            error: "SEEDREAM_ERROR",
+            message: String(error?.message || error),
+            failedAt: new Date().toISOString()
+          });
+        }
+      });
+
+      return res.status(202).json({
+        ok: true,
+        status: "processing",
+        jobId,
+        requestId,
+        statusUrl: `/jobs/${jobId}/seedream.json`
+      });
+    }
+
+    const result = await runSeedreamGeneration();
 
     const totalTime = Date.now() - startTime;
     console.log(`[${requestId}] SEEDREAM: job=${result.jobId} scenes=${result.sceneImages.length} (${totalTime}ms)`);
 
     return res.json({
-      ok: true,
-      requestId,
-      ...result,
-      scenes,
-      scenesText,
-      storyText
+      ...result
     });
   } catch (e) {
     console.error(`[${requestId}] COMFY error:`, e?.message || e);

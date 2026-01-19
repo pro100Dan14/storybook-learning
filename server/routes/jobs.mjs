@@ -71,6 +71,29 @@ router.get("/:bookId/report.json", (req, res) => {
 });
 
 /**
+ * GET /jobs/:bookId/seedream.json
+ * Serve Seedream generation status/result
+ */
+router.get("/:bookId/seedream.json", (req, res) => {
+  const { bookId } = req.params;
+
+  if (!validateBookId(bookId)) {
+    return res.status(400).json({ error: "INVALID_BOOK_ID", message: "bookId must be a valid UUID" });
+  }
+
+  const filePath = path.join(serverDir, "jobs", bookId, "seedream.json");
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Seedream status not found" });
+  }
+
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.sendFile(filePath);
+});
+
+/**
  * GET /jobs/:bookId/hero.jpg
  * Serve hero image for a book
  */
