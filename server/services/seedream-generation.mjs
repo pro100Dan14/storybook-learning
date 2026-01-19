@@ -21,21 +21,33 @@ const __dirname = path.dirname(__filename);
 const serverDir = path.dirname(__dirname);
 const JOBS_DIR = path.join(serverDir, "jobs");
 
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "https://api.projectt988.com";
 const DEFAULT_MODEL = process.env.BYTEPLUS_MODEL || "";
 const DEFAULT_SIZE = process.env.BYTEPLUS_SIZE || null;
+const DEFAULT_FETCH_TIMEOUT_MS = Number.parseInt(process.env.SEEDREAM_FETCH_TIMEOUT_MS || "", 10);
+const FALLBACK_FETCH_TIMEOUT_MS = 60000;
+const SEEDREAM_FETCH_TIMEOUT_MS = Number.isFinite(DEFAULT_FETCH_TIMEOUT_MS) && DEFAULT_FETCH_TIMEOUT_MS > 0
+  ? DEFAULT_FETCH_TIMEOUT_MS
+  : FALLBACK_FETCH_TIMEOUT_MS;
 
 let fetchFn = globalThis.fetch;
 if (!fetchFn) {
   fetchFn = (...args) => import("node-fetch").then(({ default: f }) => f(...args));
 }
 
-function ensurePublicBaseUrl() {
-  return PUBLIC_BASE_URL.replace(/\/+$/, "");
+function normalizeBaseUrl(value) {
+  if (!value) return "";
+  return String(value).trim().replace(/\/+$/, "");
 }
 
-function getPublicInputUrl(bookId) {
-  const base = ensurePublicBaseUrl();
+function resolvePublicBaseUrl(override) {
+  return normalizeBaseUrl(override || process.env.PUBLIC_BASE_URL || "");
+}
+
+function getPublicInputUrl(bookId, publicBaseUrl) {
+  const base = normalizeBaseUrl(publicBaseUrl);
+  if (!base) {
+    throw new Error("PUBLIC_BASE_URL_MISSING");
+  }
   return `${base}/jobs/${bookId}/input.jpg`;
 }
 
@@ -55,16 +67,50 @@ function safeUnlink(filePath) {
   } catch {}
 }
 
-async function fetchDataUrl(url) {
-  const res = await fetchFn(url);
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`SEEDREAM_VIEW_FAILED: ${res.status} ${res.statusText} ${errText.substring(0, 200)}`);
+function normalizeTimeoutMs(value, fallback = SEEDREAM_FETCH_TIMEOUT_MS) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
   }
-  const mimeType = res.headers.get("content-type") || "image/png";
-  const buf = Buffer.from(await res.arrayBuffer());
-  const base64 = buf.toString("base64");
-  return `data:${mimeType};base64,${base64}`;
+  return fallback;
+}
+
+function createTimeoutSignal(timeoutMs) {
+  if (!timeoutMs || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return { signal: undefined, cancel: () => {} };
+  }
+  if (!globalThis.AbortController) {
+    return { signal: undefined, cancel: () => {} };
+  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    cancel: () => clearTimeout(timeoutId)
+  };
+}
+
+async function fetchDataUrl(url, timeoutMs) {
+  const finalTimeoutMs = normalizeTimeoutMs(timeoutMs);
+  const { signal, cancel } = createTimeoutSignal(finalTimeoutMs);
+  try {
+    const res = await fetchFn(url, { signal });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`SEEDREAM_VIEW_FAILED: ${res.status} ${res.statusText} ${errText.substring(0, 200)}`);
+    }
+    const mimeType = res.headers.get("content-type") || "image/png";
+    const buf = Buffer.from(await res.arrayBuffer());
+    const base64 = buf.toString("base64");
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`SEEDREAM_FETCH_TIMEOUT: ${finalTimeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    cancel();
+  }
 }
 
 function normalizeImageUrls(data) {
@@ -75,7 +121,11 @@ export async function generateSeedreamBookImages({
   photoBuffer,
   scenes,
   bookId,
-  includeDataUrl = true
+  includeDataUrl = true,
+  publicBaseUrl,
+  requestId,
+  byteplusTimeoutMs,
+  imageFetchTimeoutMs
 }) {
   const { prompt1, prompt2Base, model, size, templateHash } = extractSeedreamPrompts();
   const finalModel = DEFAULT_MODEL || model;
@@ -84,17 +134,23 @@ export async function generateSeedreamBookImages({
   }
 
   const finalSize = DEFAULT_SIZE || size || "2048x2048";
+  const resolvedBaseUrl = resolvePublicBaseUrl(publicBaseUrl);
+  const shouldIncludeDataUrl = includeDataUrl === true;
 
   // 1) Save input image and build public URL
   const inputPath = writeInputImage(bookId, photoBuffer);
-  const inputUrl = getPublicInputUrl(bookId);
+  const inputUrl = getPublicInputUrl(bookId, resolvedBaseUrl);
   
   // Verify file exists and is accessible
   if (!fs.existsSync(inputPath)) {
     throw new Error(`SEEDREAM_INPUT_SAVE_FAILED: Failed to save input image to ${inputPath}`);
   }
   
-  console.log(`[${bookId}] SEEDREAM: Saved input image to ${inputPath}, public URL: ${inputUrl}`);
+  if (requestId) {
+    console.log(`[${requestId}] SEEDREAM: Saved input image to ${inputPath}, public URL: ${inputUrl}`);
+  } else {
+    console.log(`[${bookId}] SEEDREAM: Saved input image to ${inputPath}, public URL: ${inputUrl}`);
+  }
 
   // 2) Anchor generation
   const anchorRes = await generateSeedreamImages({
@@ -102,7 +158,9 @@ export async function generateSeedreamBookImages({
     prompt: prompt1,
     image: [inputUrl],
     size: finalSize,
-    maxImages: 1
+    maxImages: 1,
+    timeoutMs: byteplusTimeoutMs,
+    requestId
   });
   const anchorUrls = normalizeImageUrls(anchorRes.data);
   if (anchorUrls.length === 0) {
@@ -124,17 +182,19 @@ export async function generateSeedreamBookImages({
     prompt: scenesPrompt,
     image: [anchorUrl],
     size: finalSize,
-    maxImages: scenes.length
+    maxImages: scenes.length,
+    timeoutMs: byteplusTimeoutMs,
+    requestId
   });
   const sceneUrls = normalizeImageUrls(scenesRes.data);
 
   const anchorImage = { url: anchorUrl };
   const sceneImages = sceneUrls.map((url) => ({ url }));
 
-  if (includeDataUrl) {
-    anchorImage.dataUrl = await fetchDataUrl(anchorUrl);
+  if (shouldIncludeDataUrl) {
+    anchorImage.dataUrl = await fetchDataUrl(anchorUrl, imageFetchTimeoutMs);
     for (const img of sceneImages) {
-      img.dataUrl = await fetchDataUrl(img.url);
+      img.dataUrl = await fetchDataUrl(img.url, imageFetchTimeoutMs);
     }
   }
 

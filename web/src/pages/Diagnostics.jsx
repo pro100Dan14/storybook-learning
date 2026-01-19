@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { buildApiUrl } from '../utils/api'
 import './Diagnostics.css'
 
 function Diagnostics() {
@@ -14,7 +15,7 @@ function Diagnostics() {
         setLoading(true)
         setError(null)
         
-        const response = await fetch('/api/debug/config')
+        const response = await fetch(buildApiUrl('/api/debug/config'))
         
         if (!response.ok) {
           throw new Error(`Failed to load config: HTTP ${response.status}`)

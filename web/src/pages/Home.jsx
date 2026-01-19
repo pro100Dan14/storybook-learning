@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { buildApiUrl } from '../utils/api'
 import './Home.css'
 
 function Home() {
@@ -38,12 +39,6 @@ function Home() {
     reader.readAsDataURL(file)
   }
 
-  const stripDataUrlPrefix = (dataUrl) => {
-    if (!dataUrl) return ''
-    const commaIndex = dataUrl.indexOf(',')
-    return commaIndex >= 0 ? dataUrl.substring(commaIndex + 1) : dataUrl
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
@@ -63,7 +58,9 @@ function Home() {
       formData.append('theme', theme.trim() || 'волшебный лес')
       formData.append('sceneCount', String(Number(pages) || 3))
 
-      const response = await fetch('/api/generate-images', {
+      formData.append('includeDataUrl', 'false')
+
+      const response = await fetch(buildApiUrl('/api/generate-images'), {
         method: 'POST',
         body: formData,
       })
@@ -175,22 +172,28 @@ function Home() {
             )}
             <h2>Illustrations</h2>
             <div className="photo-preview">
-              {result.anchorImage?.dataUrl && (
+              {result.anchorImage && (result.anchorImage.dataUrl || result.anchorImage.url) && (
                 <div>
                   <span>Anchor</span>
-                  <img src={result.anchorImage.dataUrl} alt="Anchor" />
+                  <img
+                    src={result.anchorImage.dataUrl || result.anchorImage.url}
+                    alt="Anchor"
+                  />
                 </div>
               )}
-              {Array.isArray(result.sceneImages) && result.sceneImages.map((img, idx) => (
-                <div key={img.filename || idx}>
-                  <span>Scene {idx + 1}</span>
-                  {img.dataUrl ? (
-                    <img src={img.dataUrl} alt={`Scene ${idx + 1}`} />
-                  ) : (
-                    <a href={img.url} target="_blank" rel="noreferrer">Open</a>
-                  )}
-                </div>
-              ))}
+              {Array.isArray(result.sceneImages) && result.sceneImages.map((img, idx) => {
+                const src = img.dataUrl || img.url
+                return (
+                  <div key={img.filename || idx}>
+                    <span>Scene {idx + 1}</span>
+                    {src ? (
+                      <img src={src} alt={`Scene ${idx + 1}`} />
+                    ) : (
+                      <span>Image unavailable</span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

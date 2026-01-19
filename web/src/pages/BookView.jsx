@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { buildApiUrl } from '../utils/api'
 import './BookView.css'
 
 function BookView() {
@@ -16,7 +17,7 @@ function BookView() {
         setLoading(true)
         setError(null)
         
-        const response = await fetch(`/jobs/${bookId}/report.json`)
+        const response = await fetch(buildApiUrl(`/jobs/${bookId}/report.json`))
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -146,7 +147,7 @@ function BookView() {
     )
   }
 
-  const reportUrl = `/jobs/${bookId}/report.html`
+  const reportUrl = buildApiUrl(`/jobs/${bookId}/report.html`)
 
   return (
     <div className="book-view-container">

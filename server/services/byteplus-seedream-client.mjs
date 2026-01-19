@@ -8,6 +8,11 @@
 
 const BASE_URL = process.env.BYTEPLUS_BASE_URL || "https://ark.ap-southeast.bytepluses.com";
 const API_KEY = process.env.BYTEPLUS_API_KEY || "";
+const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.BYTEPLUS_TIMEOUT_MS || "", 10);
+const FALLBACK_TIMEOUT_MS = 180000;
+const BYTEPLUS_TIMEOUT_MS = Number.isFinite(DEFAULT_TIMEOUT_MS) && DEFAULT_TIMEOUT_MS > 0
+  ? DEFAULT_TIMEOUT_MS
+  : FALLBACK_TIMEOUT_MS;
 
 let fetchFn = globalThis.fetch;
 if (!fetchFn) {
@@ -20,6 +25,29 @@ function getAuthHeaders() {
   }
   return {
     "Authorization": `Bearer ${API_KEY}`
+  };
+}
+
+function normalizeTimeoutMs(value, fallback = BYTEPLUS_TIMEOUT_MS) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return fallback;
+}
+
+function createTimeoutSignal(timeoutMs) {
+  if (!timeoutMs || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return { signal: undefined, cancel: () => {} };
+  }
+  if (!globalThis.AbortController) {
+    return { signal: undefined, cancel: () => {} };
+  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    cancel: () => clearTimeout(timeoutId)
   };
 }
 
@@ -37,7 +65,9 @@ export async function generateSeedreamImages({
   sequential = "auto",
   responseFormat = "url",
   stream = false,
-  watermark = false
+  watermark = false,
+  timeoutMs,
+  requestId
 }) {
   if (!model) throw new Error("BYTEPLUS_MODEL_MISSING");
   if (!prompt) throw new Error("BYTEPLUS_PROMPT_MISSING");
@@ -48,25 +78,46 @@ export async function generateSeedreamImages({
     size,
     stream,
     response_format: responseFormat,
-    sequential_image_generation: sequential,
-    sequential_image_generation_options: { max_images: maxImages }
+    sequential_image_generation: sequential
   };
 
+  const normalizedMaxImages = Number.isFinite(Number(maxImages)) ? Number(maxImages) : null;
+  if (normalizedMaxImages) {
+    body.sequential_image_generation_options = { max_images: normalizedMaxImages };
+  }
+
   if (image) {
-    body.image = image;
+    body.image = Array.isArray(image) ? image : [image];
   }
   if (typeof watermark === "boolean") {
     body.watermark = watermark;
   }
 
-  const res = await fetchFn(`${BASE_URL}/api/v3/images/generations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders()
-    },
-    body: JSON.stringify(body)
-  });
+  const finalTimeoutMs = normalizeTimeoutMs(timeoutMs);
+  const { signal, cancel } = createTimeoutSignal(finalTimeoutMs);
+  let res;
+
+  try {
+    if (requestId) {
+      console.log(`[${requestId}] BYTEPLUS: model=${model} size=${size} maxImages=${normalizedMaxImages || "n/a"}`);
+    }
+    res = await fetchFn(`${BASE_URL}/api/v3/images/generations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(body),
+      signal
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`BYTEPLUS_TIMEOUT: ${finalTimeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    cancel();
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");

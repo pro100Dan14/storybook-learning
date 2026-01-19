@@ -126,6 +126,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set("trust proxy", true);
 
 // CORS configuration for Lovable and mobile apps
 const corsOptions = {
@@ -255,6 +256,36 @@ function simpleHash(str) {
 // Helper: Generate short request ID
 function generateRequestId() {
   return Math.random().toString(36).substring(2, 10);
+}
+
+function normalizeBaseUrl(value) {
+  if (!value) return "";
+  return String(value).trim().replace(/\/+$/, "");
+}
+
+function resolvePublicBaseUrl(req) {
+  const envBase = normalizeBaseUrl(process.env.PUBLIC_BASE_URL);
+  if (envBase) return envBase;
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const proto = forwardedProto ? forwardedProto.split(",")[0].trim() : req.protocol;
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const host = forwardedHost ? forwardedHost.split(",")[0].trim() : req.get("host");
+  if (!host) return "";
+  return normalizeBaseUrl(`${proto}://${host}`);
+}
+
+function isLikelyLocalUrl(baseUrl) {
+  if (!baseUrl) return false;
+  return baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1") || baseUrl.includes("0.0.0.0");
+}
+
+function parseBoolean(value, defaultValue = true) {
+  if (value === undefined || value === null || value === "") return defaultValue;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return defaultValue;
 }
 
 // Middleware: Add requestId to every request (must be after generateRequestId)
@@ -752,11 +783,32 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
     const scenarioText = scenes.length > 0 ? scenes.map((s, i) => `Scene${i + 1}: ${s}`).join("\n") : "";
 
     // Always generate final scene descriptions via Gemini (based on scenario)
+    const sceneCountRaw = Number.parseInt(
+      String(req.body?.sceneCount ?? req.body?.pages ?? ""),
+      10
+    );
+    const sceneCountSafe = Number.isFinite(sceneCountRaw) ? sceneCountRaw : 3;
+    const sceneCount = Math.max(1, Math.min(6, sceneCountSafe));
+    const includeDataUrl = parseBoolean(req.body?.includeDataUrl, true);
+    const publicBaseUrl = resolvePublicBaseUrl(req);
+
+    if (!publicBaseUrl) {
+      return res.status(500).json({
+        ok: false,
+        error: "PUBLIC_BASE_URL_MISSING",
+        message: "Public base URL is required for Seedream input images.",
+        requestId
+      });
+    }
+    if (isLikelyLocalUrl(publicBaseUrl)) {
+      console.warn(`[${requestId}] SEEDREAM: PUBLIC_BASE_URL looks local (${publicBaseUrl}). BytePlus cannot access localhost.`);
+    }
+
     const generated = await generateScenesFromGemini({
       name: req.body?.name || "",
       theme: req.body?.theme || "",
       scenarioText,
-      count: Number(req.body?.sceneCount || 3),
+      count: sceneCount,
       requestId
     });
     scenes = generated.scenes;
@@ -764,14 +816,15 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
     storyText = generated.storyText;
 
     const bookId = req.body?.bookId || req.body?.jobId || null;
-    const seedBase = req.body?.seedBase || req.body?.seed || null;
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const jobId = bookId && uuidPattern.test(bookId) ? bookId : randomUUID();
     const result = await generateSeedreamBookImages({
       photoBuffer,
       scenes,
       bookId: jobId,
-      includeDataUrl: true
+      includeDataUrl,
+      publicBaseUrl,
+      requestId
     });
 
     const totalTime = Date.now() - startTime;
@@ -2297,6 +2350,13 @@ const getConfigResponse = () => {
   };
 };
 
+const getUiConfigResponse = () => ({
+  backendVersion: process.env.BACKEND_VERSION || "1.0.0",
+  environment: process.env.NODE_ENV || "development",
+  pageCount: 4,
+  imageStyle: "russian-folktale"
+});
+
 app.get("/debug/config", (req, res) => {
   res.json(getConfigResponse());
 });
@@ -2304,6 +2364,10 @@ app.get("/debug/config", (req, res) => {
 // Alias endpoint for /api/debug/config (via Vite proxy)
 app.get("/api/debug/config", (req, res) => {
   res.json(getConfigResponse());
+});
+
+app.get("/api/config", (req, res) => {
+  res.json(getUiConfigResponse());
 });
 
 // Serve frontend static files (built React app)
