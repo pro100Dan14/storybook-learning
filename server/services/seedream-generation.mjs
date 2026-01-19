@@ -15,8 +15,11 @@ import { extractSeedreamPrompts } from "./seedream-template.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const REPO_ROOT = path.resolve(__dirname, "../../");
-const JOBS_DIR = path.join(REPO_ROOT, "server", "jobs");
+// Use same logic as routes/jobs.mjs: serverDir is parent of current directory
+// In Docker: /app (where server/ is copied to)
+// In local dev: server (parent of services/)
+const serverDir = path.dirname(__dirname);
+const JOBS_DIR = path.join(serverDir, "jobs");
 
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "https://api.projectt988.com";
 const DEFAULT_MODEL = process.env.BYTEPLUS_MODEL || "";
@@ -85,6 +88,13 @@ export async function generateSeedreamBookImages({
   // 1) Save input image and build public URL
   const inputPath = writeInputImage(bookId, photoBuffer);
   const inputUrl = getPublicInputUrl(bookId);
+  
+  // Verify file exists and is accessible
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`SEEDREAM_INPUT_SAVE_FAILED: Failed to save input image to ${inputPath}`);
+  }
+  
+  console.log(`[${bookId}] SEEDREAM: Saved input image to ${inputPath}, public URL: ${inputUrl}`);
 
   // 2) Anchor generation
   const anchorRes = await generateSeedreamImages({
@@ -128,7 +138,9 @@ export async function generateSeedreamBookImages({
     }
   }
 
-  safeUnlink(inputPath);
+  // Don't delete input image immediately - BytePlus API may still be downloading it
+  // File will be cleaned up later or can be kept for debugging
+  // safeUnlink(inputPath);
 
   return {
     jobId: bookId,
