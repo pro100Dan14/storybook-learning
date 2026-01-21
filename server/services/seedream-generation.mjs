@@ -117,11 +117,56 @@ function normalizeImageUrls(data) {
   return (data || []).map((item) => item?.url).filter(Boolean);
 }
 
+function getAgeBodyProfile(age) {
+  if (age <= 2) {
+    return {
+      label: "toddler",
+      bodyNotes: "very short height, big head-to-body ratio, short limbs, rounder body"
+    };
+  }
+  if (age <= 4) {
+    return {
+      label: "preschooler",
+      bodyNotes: "short height, slightly longer limbs, still rounded proportions"
+    };
+  }
+  if (age <= 6) {
+    return {
+      label: "young child",
+      bodyNotes: "medium height for a child, balanced proportions"
+    };
+  }
+  if (age <= 8) {
+    return {
+      label: "older child",
+      bodyNotes: "taller height, longer limbs, slimmer body proportions"
+    };
+  }
+  return {
+    label: "pre-teen child",
+    bodyNotes: "taller height, longer limbs, leaner proportions"
+  };
+}
+
 function buildAgeBodyPrompt(age) {
   if (!Number.isFinite(age) || age < 1 || age > 10) {
     return "";
   }
-  return `Child age: ${age} years old. Use age-appropriate body proportions (height/limb size), but do not alter the face or facial identity.`;
+  const profile = getAgeBodyProfile(age);
+  return [
+    `BODY AGE TARGET: ${age} years old (${profile.label}).`,
+    `BODY PROPORTIONS: ${profile.bodyNotes}.`,
+    "Scale the body to the scene accordingly (height, limb length, torso size).",
+    "Do NOT change the face or facial age appearance; keep facial identity locked."
+  ].join("\n");
+}
+
+function buildAgeSceneTag(age) {
+  if (!Number.isFinite(age) || age < 1 || age > 10) {
+    return "";
+  }
+  const profile = getAgeBodyProfile(age);
+  return `Child is ${age} years old (${profile.label}) with ${profile.bodyNotes}.`;
 }
 
 export async function generateSeedreamBookImages({
@@ -178,11 +223,13 @@ export async function generateSeedreamBookImages({
   const anchorUrl = anchorUrls[0];
 
   // 3) Scenes generation
+  const ageSceneTag = buildAgeSceneTag(age);
   const scenesLines = scenes.map((s, i) => {
     const text = String(s).trim();
-    return text.toLowerCase().startsWith("scene")
+    const baseLine = text.toLowerCase().startsWith("scene")
       ? text
       : `Scene${i + 1}: ${text}`;
+    return ageSceneTag ? `${baseLine} (${ageSceneTag})` : baseLine;
   });
   const agePrompt = buildAgeBodyPrompt(age);
   const prompt2Parts = [prompt2Base.trim(), agePrompt].filter(Boolean);
