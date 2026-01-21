@@ -9,9 +9,13 @@ import { extractJSONFromText } from "../utils/validation.mjs";
 
 const DEFAULT_SCENE_COUNT = 3;
 
-function buildScenesPrompt({ name, theme, count, scenarioText }) {
+function buildScenesPrompt({ name, theme, age, count, scenarioText }) {
   const safeName = name ? `Имя героя: ${name}.` : "";
   const safeTheme = theme ? `Тема: ${theme}.` : "";
+  const safeAge = Number.isFinite(age) ? `Возраст ребенка: ${age} лет.` : "";
+  const ageGuidance = Number.isFinite(age)
+    ? "Учитывай возраст при выборе лексики, сложности и длины предложений."
+    : "";
   const safeScenario = scenarioText ? `Сценарий от клиента:\n${scenarioText}` : "";
 
   return `
@@ -33,9 +37,11 @@ function buildScenesPrompt({ name, theme, count, scenarioText }) {
 - Без современных предметов, логотипов, текста
 - Никаких ссылок на фото
 - Тёплый, мягкий, сказочный тон
+${ageGuidance}
 
 ${safeName}
 ${safeTheme}
+${safeAge}
 ${safeScenario}
 `.trim();
 }
@@ -43,11 +49,12 @@ ${safeScenario}
 export async function generateScenesFromGemini({
   name,
   theme,
+  age,
   scenarioText,
   count = DEFAULT_SCENE_COUNT,
   requestId
 }) {
-  const prompt = buildScenesPrompt({ name, theme, count, scenarioText });
+  const prompt = buildScenesPrompt({ name, theme, age, count, scenarioText });
 
   const result = await generateTextUnified({
     prompt,

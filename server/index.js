@@ -795,6 +795,20 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
       req.body?.scenesJson ||
       "";
 
+    const ageRaw = req.body?.age;
+    const ageParsed = Number.parseInt(String(ageRaw ?? ""), 10);
+    const age = Number.isFinite(ageParsed) ? ageParsed : null;
+    if (ageRaw !== undefined && ageRaw !== null) {
+      if (!Number.isFinite(ageParsed) || ageParsed < 1 || ageParsed > 10) {
+        return res.status(400).json({
+          ok: false,
+          error: "AGE_INVALID",
+          message: "Age must be a number from 1 to 10.",
+          requestId
+        });
+      }
+    }
+
     // Always generate final scene descriptions via Gemini (based on scenario)
     const sceneCountRaw = Number.parseInt(
       String(req.body?.sceneCount ?? req.body?.pages ?? ""),
@@ -840,6 +854,7 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
       const generated = await generateScenesFromGemini({
         name: req.body?.name || "",
         theme: req.body?.theme || "",
+        age,
         scenarioText,
         count: sceneCount,
         requestId
@@ -854,7 +869,8 @@ app.post("/api/generate-images", upload.single("photo"), async (req, res) => {
         bookId: jobId,
         includeDataUrl,
         publicBaseUrl,
-        requestId
+        requestId,
+        age
       });
 
       return {

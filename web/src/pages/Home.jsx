@@ -4,6 +4,7 @@ import './Home.css'
 
 function Home() {
   const [name, setName] = useState('Герой')
+  const [age, setAge] = useState(6)
   const [theme, setTheme] = useState('волшебный лес')
   const [pages, setPages] = useState(3)
   const [photo, setPhoto] = useState(null)
@@ -58,6 +59,7 @@ function Home() {
       const formData = new FormData()
       formData.append('photo', photo.file)
       formData.append('name', name.trim() || 'Герой')
+      formData.append('age', String(Number(age) || 6))
       formData.append('theme', theme.trim() || 'волшебный лес')
       formData.append('sceneCount', String(Number(pages) || 3))
 
@@ -130,6 +132,19 @@ function Home() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Герой"
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="age">Age</label>
+            <input
+              id="age"
+              type="number"
+              min="1"
+              max="10"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
               disabled={loading}
             />
           </div>

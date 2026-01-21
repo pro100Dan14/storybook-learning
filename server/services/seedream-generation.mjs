@@ -117,6 +117,13 @@ function normalizeImageUrls(data) {
   return (data || []).map((item) => item?.url).filter(Boolean);
 }
 
+function buildAgeBodyPrompt(age) {
+  if (!Number.isFinite(age) || age < 1 || age > 10) {
+    return "";
+  }
+  return `Child age: ${age} years old. Use age-appropriate body proportions (height/limb size), but do not alter the face or facial identity.`;
+}
+
 export async function generateSeedreamBookImages({
   photoBuffer,
   scenes,
@@ -124,6 +131,7 @@ export async function generateSeedreamBookImages({
   includeDataUrl = true,
   publicBaseUrl,
   requestId,
+  age,
   byteplusTimeoutMs,
   imageFetchTimeoutMs
 }) {
@@ -176,7 +184,9 @@ export async function generateSeedreamBookImages({
       ? text
       : `Scene${i + 1}: ${text}`;
   });
-  const scenesPrompt = `${prompt2Base.trimEnd()}\n\n${scenesLines.join("\n")}`;
+  const agePrompt = buildAgeBodyPrompt(age);
+  const prompt2Parts = [prompt2Base.trim(), agePrompt].filter(Boolean);
+  const scenesPrompt = `${prompt2Parts.join("\n\n")}\n\n${scenesLines.join("\n")}`;
   const scenesRes = await generateSeedreamImages({
     model: finalModel,
     prompt: scenesPrompt,
